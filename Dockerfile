@@ -49,11 +49,14 @@ RUN npx prisma generate
 # Build backend
 COPY --from=backend-builder /app/backend/dist ./dist
 
+# Script de démarrage (vérifie DATABASE_URL, migrations, puis node)
+COPY backend/scripts/start.sh ./scripts/start.sh
+RUN chmod +x ./scripts/start.sh
+
 # Frontend statique (servi par Nest en prod)
 COPY --from=frontend-builder /app/frontend/dist ./client
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# Migrations au démarrage puis lancement du serveur
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["./scripts/start.sh"]
