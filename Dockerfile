@@ -6,7 +6,7 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY frontend/ ./
 # En prod, l'API est sur le même domaine (chemins relatifs /api)
@@ -22,7 +22,7 @@ FROM node:20-alpine AS backend-builder
 WORKDIR /app/backend
 
 COPY backend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY backend/ ./
 RUN npx prisma generate
@@ -37,7 +37,7 @@ WORKDIR /app
 
 # Dépendances backend (incl. prisma pour migrate deploy au démarrage)
 COPY backend/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Prisma + schéma (pour migrate et runtime)
 COPY backend/prisma ./prisma/
