@@ -1,0 +1,625 @@
+{
+    "project": {
+      "name": "Manage PME",
+      "type": "SaaS Store & Shop Management Application",
+      "version": "1.0.0",
+      "description": "A full-featured enterprise store management SaaS for SMBs including POS, inventory, sales, clients, suppliers, invoicing, and admin panel.",
+      "target_users": ["Store owners", "Cashiers", "Stock managers", "Accountants", "Administrators"],
+      "design_philosophy": "Inspired by IBM Carbon, Ant Design, Linear.app, and Shopify POS — combining data-dense enterprise ergonomics with a premium consumer-grade aesthetic. The UI is built around speed, clarity, and zero cognitive friction."
+    },
+  
+    "design_system": {
+      "inspiration_sources": [
+        "Linear.app — minimalism, keyboard-first, blazing speed",
+        "Shopify POS — clean retail transaction UI",
+        "IBM Carbon Design System — enterprise density and accessibility",
+        "Ant Design — data tables, forms, complex enterprise patterns",
+        "Apple macOS — dock navigation, glassmorphism, micro-animations",
+        "Stripe Dashboard — premium data visualization and financial UI",
+        "Notion — content hierarchy and whitespace mastery"
+      ],
+  
+      "color_palette": {
+        "brand_primary": "#6366F1",
+        "brand_primary_light": "#818CF8",
+        "brand_primary_dark": "#4F46E5",
+        "brand_accent": "#10B981",
+        "background_base": "#0F0F13",
+        "background_surface": "#17171D",
+        "background_card": "#1E1E28",
+        "background_elevated": "#252532",
+        "border_subtle": "#2A2A38",
+        "border_default": "#363648",
+        "text_primary": "#F1F1F5",
+        "text_secondary": "#9898AD",
+        "text_muted": "#5C5C75",
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "danger": "#EF4444",
+        "info": "#3B82F6",
+        "glassmorphism_bg": "rgba(30, 30, 40, 0.7)",
+        "glassmorphism_border": "rgba(255, 255, 255, 0.08)",
+        "dock_bg": "rgba(15, 15, 20, 0.85)"
+      },
+  
+      "typography": {
+        "font_family_primary": "'Inter', 'SF Pro Display', system-ui, sans-serif",
+        "font_family_mono": "'JetBrains Mono', 'Fira Code', monospace",
+        "scale": {
+          "xs": "0.75rem",
+          "sm": "0.875rem",
+          "base": "1rem",
+          "lg": "1.125rem",
+          "xl": "1.25rem",
+          "2xl": "1.5rem",
+          "3xl": "1.875rem",
+          "4xl": "2.25rem"
+        },
+        "weights": {
+          "regular": 400,
+          "medium": 500,
+          "semibold": 600,
+          "bold": 700
+        }
+      },
+  
+      "spacing": {
+        "unit": "4px",
+        "scale": [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128]
+      },
+  
+      "border_radius": {
+        "sm": "6px",
+        "md": "10px",
+        "lg": "14px",
+        "xl": "20px",
+        "2xl": "28px",
+        "full": "9999px"
+      },
+  
+      "shadows": {
+        "card": "0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        "elevated": "0 10px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)",
+        "dock": "0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)",
+        "glow_primary": "0 0 20px rgba(99,102,241,0.3)",
+        "glow_success": "0 0 16px rgba(16,185,129,0.25)"
+      },
+  
+      "animations": {
+        "transition_fast": "120ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "transition_default": "200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "transition_slow": "400ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "dock_icon_hover": "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+        "spring": "cubic-bezier(0.34, 1.56, 0.64, 1)"
+      },
+  
+      "effects": {
+        "glassmorphism": "backdrop-filter: blur(20px) saturate(180%)",
+        "frosted": "backdrop-filter: blur(40px) saturate(200%)",
+        "noise_texture": "optional subtle grain overlay at 3% opacity"
+      }
+    },
+  
+    "layout": {
+      "structure": "Full-screen single page application (SPA) with NO traditional top/left nav. Navigation is exclusively via a macOS-style dock at the bottom.",
+      "content_area": "Entire screen above dock — full bleed, zero wasted space",
+      "dock_height": "72px floating above bottom with 16px clearance",
+      "grid_system": "12-column responsive grid, 24px gutters",
+      "breakpoints": {
+        "sm": "640px",
+        "md": "768px",
+        "lg": "1024px",
+        "xl": "1280px",
+        "2xl": "1536px"
+      }
+    },
+  
+    "navigation": {
+      "type": "macOS-style floating bottom dock",
+      "description": "A glassmorphic frosted-glass pill/bar that floats at the bottom center of the screen. Icons magnify on hover exactly like macOS dock. Active module shows a glowing dot indicator below the icon. Tooltips appear above icons on hover. The dock is always visible. On tablet/touch, icons do not magnify but remain accessible with tap.",
+  
+      "dock_behavior": {
+        "default_icon_size": "48px",
+        "hover_icon_size": "64px",
+        "neighbor_icon_size": "56px",
+        "magnification_curve": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "active_indicator": "small glowing dot below icon in brand_primary color",
+        "tooltip": "label appears above icon with fade-in on hover",
+        "background": "glassmorphism pill with blur(40px), dark tinted, 1px border rgba(255,255,255,0.08)",
+        "padding": "12px 24px",
+        "gap_between_icons": "8px",
+        "separator": "1px vertical divider between module groups",
+        "position": "fixed bottom-4 left-50% transform -translateX-50%",
+        "z_index": 9999
+      },
+  
+      "modules": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "icon": "LayoutDashboard",
+          "icon_color": "#818CF8",
+          "shortcut": "⌘1",
+          "description": "KPI overview, daily summary, alerts"
+        },
+        {
+          "id": "pos",
+          "label": "Point of Sale",
+          "icon": "ShoppingCart",
+          "icon_color": "#10B981",
+          "shortcut": "⌘2",
+          "description": "Cash register, quick sale, receipt printer"
+        },
+        {
+          "id": "products",
+          "label": "Products",
+          "icon": "Package",
+          "icon_color": "#F59E0B",
+          "shortcut": "⌘3",
+          "description": "Product catalog, categories, pricing"
+        },
+        {
+          "id": "stock",
+          "label": "Stock",
+          "icon": "Warehouse",
+          "icon_color": "#3B82F6",
+          "shortcut": "⌘4",
+          "description": "Stock levels, movements, alerts"
+        },
+        {
+          "id": "inventory",
+          "label": "Inventory",
+          "icon": "ClipboardList",
+          "icon_color": "#8B5CF6",
+          "shortcut": "⌘5",
+          "description": "Physical count, reconciliation, audit"
+        },
+        {
+          "id": "sales",
+          "label": "Sales",
+          "icon": "TrendingUp",
+          "icon_color": "#10B981",
+          "shortcut": "⌘6",
+          "description": "Sales history, returns, analytics"
+        },
+        {
+          "separator": true,
+          "label": "---"
+        },
+        {
+          "id": "clients",
+          "label": "Clients",
+          "icon": "Users",
+          "icon_color": "#F472B6",
+          "shortcut": "⌘7",
+          "description": "Client profiles, loyalty, history"
+        },
+        {
+          "id": "suppliers",
+          "label": "Suppliers",
+          "icon": "Truck",
+          "icon_color": "#FB923C",
+          "shortcut": "⌘8",
+          "description": "Supplier management, purchase orders"
+        },
+        {
+          "id": "invoices",
+          "label": "Invoices",
+          "icon": "FileText",
+          "icon_color": "#34D399",
+          "shortcut": "⌘9",
+          "description": "PDF invoices, receipts, branding"
+        },
+        {
+          "separator": true,
+          "label": "---"
+        },
+        {
+          "id": "admin",
+          "label": "Admin",
+          "icon": "Settings2",
+          "icon_color": "#94A3B8",
+          "shortcut": "⌘0",
+          "description": "Company settings, users, roles"
+        }
+      ]
+    },
+  
+    "modules": {
+  
+      "dashboard": {
+        "layout": "Bento grid — mosaic of cards in varying sizes",
+        "components": [
+          {
+            "name": "KPI Strip",
+            "type": "stat_cards_row",
+            "metrics": ["Today Revenue", "Transactions", "Low Stock Alerts", "New Clients"],
+            "style": "glassmorphic cards with animated counter on load, trend arrow indicator"
+          },
+          {
+            "name": "Revenue Chart",
+            "type": "area_chart",
+            "style": "Gradient fill area chart, Recharts or Chart.js, last 30 days"
+          },
+          {
+            "name": "Top Products",
+            "type": "horizontal_bar_chart",
+            "style": "Top 5 selling products with progress bars"
+          },
+          {
+            "name": "Recent Transactions",
+            "type": "activity_feed",
+            "style": "Timeline-style feed, avatar initials, amount badges"
+          },
+          {
+            "name": "Stock Alerts",
+            "type": "alert_list",
+            "style": "Red/orange badges, quick-link to reorder"
+          },
+          {
+            "name": "Cash Register Status",
+            "type": "status_card",
+            "style": "Current session total, open/close button"
+          }
+        ]
+      },
+  
+      "pos": {
+        "description": "The POS is the most critical, high-velocity screen — optimized for speed, keyboard, and touch",
+        "layout": "Three-panel split: left product grid, center cart, right payment",
+        "panels": {
+          "left_product_panel": {
+            "width": "45%",
+            "content": [
+              "Search bar with barcode scanner icon (auto-focus on open)",
+              "Category filter pill buttons (horizontal scroll)",
+              "Product grid — cards with image, name, price, stock badge",
+              "Quick-add with + button on each card",
+              "Keyboard shortcut: scan barcode auto-triggers add"
+            ]
+          },
+          "center_cart_panel": {
+            "width": "30%",
+            "content": [
+              "Cart item list — product name, qty stepper, unit price, line total",
+              "Discount field per item or global",
+              "Subtotal, tax breakdown, total — bold large font",
+              "Notes textarea for order notes",
+              "Clear cart / Hold order buttons",
+              "Active customer badge (link to client selector)"
+            ]
+          },
+          "right_payment_panel": {
+            "width": "25%",
+            "content": [
+              "Large total amount display",
+              "Payment method selector: Cash, Card, Mixed, Credit",
+              "Cash tendered input with automatic change calculator",
+              "Charge button — large, green, full width",
+              "Print receipt / Email receipt toggles",
+              "Session summary mini-stats"
+            ]
+          }
+        },
+        "ux_principles": [
+          "ZERO unnecessary clicks — a full sale in 3 taps max",
+          "Keyboard-first: Tab/Enter flow through entire checkout",
+          "Barcode input auto-detected — no mode switching",
+          "High contrast mode for bright retail environments",
+          "Error states are gentle and non-blocking"
+        ]
+      },
+  
+      "products": {
+        "layout": "Toolbar + data table with expandable row detail",
+        "features": [
+          "Searchable, sortable, filterable product table",
+          "Bulk actions: update price, change category, archive",
+          "Product detail slide-over panel (no page navigation)",
+          "Image upload with drag-and-drop",
+          "Variants management (size, color, etc.)",
+          "Barcode generator/display",
+          "Category tree sidebar",
+          "Import CSV / Export CSV buttons"
+        ],
+        "table_columns": ["Image", "Name", "SKU", "Category", "Price", "Cost", "Stock", "Status", "Actions"]
+      },
+  
+      "stock": {
+        "layout": "Split view: stock overview table + movement history timeline",
+        "features": [
+          "Real-time stock level table with color-coded status (green/orange/red)",
+          "Stock movement history per product",
+          "Manual stock adjustment form (with reason field)",
+          "Low stock threshold configuration",
+          "Stock value report (FIFO/LIFO toggle)",
+          "Quick stock-in from supplier",
+          "Export stock report to PDF/CSV"
+        ]
+      },
+  
+      "inventory": {
+        "layout": "Wizard-style workflow for physical inventory count sessions",
+        "features": [
+          "Create new inventory session",
+          "Scan or select products to count",
+          "Expected vs Actual quantity comparison",
+          "Discrepancy highlights in red",
+          "Validate and apply adjustments",
+          "Inventory history with PDF reports",
+          "Multi-user simultaneous counting support"
+        ]
+      },
+  
+      "sales": {
+        "layout": "Analytics dashboard + filterable sales table",
+        "features": [
+          "Date range picker (today, week, month, custom)",
+          "Revenue, profit margin, avg ticket metrics",
+          "Sales by category pie chart",
+          "Sales by staff bar chart",
+          "Individual sale detail slide-over",
+          "Return/refund workflow from sale record",
+          "Export to PDF / Excel"
+        ]
+      },
+  
+      "clients": {
+        "layout": "CRM-style client list + detailed client profile",
+        "features": [
+          "Client list with search and tag filter",
+          "Client profile: contact info, purchase history, loyalty points",
+          "Add/edit client modal",
+          "Client statement (all transactions PDF)",
+          "Birthday/anniversary reminders",
+          "Client segmentation tags",
+          "Bulk email/SMS integration hook"
+        ]
+      },
+  
+      "suppliers": {
+        "layout": "Supplier directory + purchase orders",
+        "features": [
+          "Supplier profile with contact details and product catalog",
+          "Create purchase order from low-stock alert",
+          "Purchase order status tracking (Pending, Sent, Received, Partial)",
+          "Receive goods workflow with stock auto-update",
+          "Supplier invoice attachment (PDF)",
+          "Payment tracking per supplier"
+        ]
+      },
+  
+      "invoices": {
+        "description": "PDF invoice and receipt generation with company branding",
+        "layout": "Invoice list + PDF preview panel",
+        "features": [
+          "Invoice list with status badges (Draft, Sent, Paid, Overdue)",
+          "Create invoice from sale or manually",
+          "PDF generation with company logo, colors, legal info",
+          "Custom invoice template editor (logo, footer, payment terms)",
+          "Duplicate invoice, Send by email (SMTP), Download PDF",
+          "Receipt vs Invoice distinction",
+          "Sequential auto-numbering with prefix config",
+          "QR code on invoices (link to online payment)",
+          "Multi-currency support"
+        ],
+        "pdf_design": {
+          "header": "Company logo (left) + invoice number/date (right)",
+          "client_block": "Bill to section with full client details",
+          "items_table": "Description, Qty, Unit Price, Discount, Total columns",
+          "totals": "Subtotal, Discount, Tax (VAT breakdown), Grand Total",
+          "footer": "Payment terms, bank details, legal mention, thank you note",
+          "branding": "Primary color used for header background and table headers"
+        }
+      },
+  
+      "admin": {
+        "layout": "Settings sidebar with content panels",
+        "sections": [
+          {
+            "id": "company",
+            "label": "Company Details",
+            "fields": ["Company name", "Logo upload", "Address", "Tax ID", "Registration number", "Phone", "Email", "Website", "Currency", "Tax rates (VAT)", "Fiscal year start"]
+          },
+          {
+            "id": "branding",
+            "label": "Branding & Theme",
+            "fields": ["Primary color picker", "Logo for invoices", "Invoice header image", "Default invoice footer text", "Color theme (dark/light)"]
+          },
+          {
+            "id": "users",
+            "label": "User Management",
+            "features": ["User list with role badges", "Invite user by email", "Role assignment: Admin, Manager, Cashier, Viewer", "Permission matrix per role", "Deactivate/reactivate user", "Activity log per user"]
+          },
+          {
+            "id": "pos_settings",
+            "label": "POS Settings",
+            "fields": ["Default tax rate", "Receipt printer config", "Barcode scanner mode", "Cash rounding rules", "Receipt footer message", "Auto-print receipt toggle"]
+          },
+          {
+            "id": "integrations",
+            "label": "Integrations",
+            "features": ["Email SMTP config", "Accounting export (CSV format)", "API key management"]
+          },
+          {
+            "id": "backup",
+            "label": "Backup & Data",
+            "features": ["Export all data (JSON/CSV)", "Import data", "Database backup download"]
+          }
+        ]
+      }
+    },
+  
+    "ui_components": {
+      "data_tables": {
+        "style": "Dark background, alternating subtle row hover, sticky header, sortable columns with arrow indicators, per-row action menu (three dots), bulk checkbox selection, pagination with page size selector",
+        "empty_state": "Centered illustration + CTA button"
+      },
+      "modals": {
+        "style": "Centered overlay with frosted backdrop blur, slide-up entry animation, close on Escape, max-width 680px for forms",
+        "slide_over": "Right-side panel that slides in (480px wide) for detail views without losing context"
+      },
+      "forms": {
+        "style": "Floating labels, dark input fields with subtle border, focus ring in brand_primary, inline validation, helper text below field",
+        "layout": "Single column for modals, two-column grid for full-page forms"
+      },
+      "buttons": {
+        "primary": "brand_primary background, white text, rounded-md, hover glow effect",
+        "secondary": "transparent with border, hover fills with subtle brand color",
+        "danger": "red tinted, for delete/destructive actions",
+        "ghost": "text only, hover subtle bg",
+        "icon_button": "square, subtle hover, tooltip on hover"
+      },
+      "badges": {
+        "style": "Small pill badges, color-coded by status type, subtle background with matching text color"
+      },
+      "notifications": {
+        "style": "Toast notifications — top-right, slide-in from right, auto-dismiss 4s, success/error/info/warning variants with icon"
+      },
+      "charts": {
+        "library": "Recharts (React) or Chart.js",
+        "style": "Dark themed, brand color palette, no border frames, smooth curves, tooltip on hover, legend below chart"
+      },
+      "search": {
+        "global": "Command palette (⌘K) — full-screen overlay, searches across all modules, keyboard navigable results",
+        "local": "Inline search bars per module list/table"
+      }
+    },
+  
+    "ux_principles": {
+      "speed": "Every action completes in under 200ms perceived time. Optimistic UI updates before server confirms.",
+      "density": "Information-dense but not cluttered. Data tables show 15-20 rows. Use compact mode toggle.",
+      "keyboard_first": "Every action reachable by keyboard. Shortcuts displayed in tooltips. Full Tab order in forms.",
+      "progressive_disclosure": "Show overview first, drill-down on demand. No walls of data upfront.",
+      "accessibility": "WCAG 2.1 AA. Minimum 4.5:1 contrast ratio. ARIA labels on all interactive elements.",
+      "error_prevention": "Confirm dialogs for destructive actions. Undo mechanism for soft deletes. Auto-save drafts.",
+      "feedback": "Micro-animations on every interaction. Loading skeletons instead of spinners. Progress indicators for long operations.",
+      "consistency": "Same interaction patterns across all modules. Learn once, use everywhere.",
+      "mobile_responsive": "Dock collapses to icon-only on tablet. Full-screen panels on mobile. Touch-optimized POS.",
+      "dark_mode": "Dark mode is the default and primary theme. Light mode is optional."
+    },
+  
+    "tech_stack_recommendation": {
+      "frontend": "React 18 + TypeScript",
+      "styling": "Tailwind CSS 3 + CSS custom properties for theme tokens",
+      "component_library": "shadcn/ui (headless) + custom components",
+      "state_management": "Zustand or Jotai",
+      "data_fetching": "TanStack Query (React Query)",
+      "routing": "React Router v6 or TanStack Router",
+      "charts": "Recharts",
+      "pdf_generation": "React-PDF or Puppeteer (server-side)",
+      "icons": "Lucide React",
+      "animations": "Framer Motion",
+      "forms": "React Hook Form + Zod",
+      "date": "date-fns",
+      "tables": "TanStack Table"
+    },
+  
+    "cursor_ai_prompt": {
+      "instructions": "Paste the following prompt directly into Cursor AI Composer (⌘+I) or as a system/context prompt. Use 'Apply to codebase' after each module generation.",
+      "prompt": "You are building 'Manage PME' — a premium dark-themed SaaS web application for small to medium business store management. The tech stack is React 18 + TypeScript + Tailwind CSS + shadcn/ui + Framer Motion + Lucide React icons + Recharts + Zustand + React Hook Form + Zod + TanStack Query + TanStack Table.\n\n═══════════════════════════════════════\n🎨 DESIGN SYSTEM — MANDATORY RULES\n═══════════════════════════════════════\n\nCOLORS (use as Tailwind config extensions):\n- bg-base: #0F0F13 (root background)\n- bg-surface: #17171D (main panels)\n- bg-card: #1E1E28 (cards)\n- bg-elevated: #252532 (modals, popovers)\n- border-subtle: #2A2A38\n- border-default: #363648\n- text-primary: #F1F1F5\n- text-secondary: #9898AD\n- text-muted: #5C5C75\n- brand-primary: #6366F1\n- brand-accent: #10B981\n- danger: #EF4444\n- warning: #F59E0B\n- info: #3B82F6\n\nFONT: Inter (Google Fonts) for all UI. JetBrains Mono for numbers, codes, prices.\n\nGLASS EFFECT: backdrop-filter: blur(40px) saturate(180%), background: rgba(30,30,40,0.7), border: 1px solid rgba(255,255,255,0.08)\n\nANIMATIONS: All transitions use cubic-bezier(0.16, 1, 0.3, 1). Micro-animations with Framer Motion on every state change.\n\n═══════════════════════════════════════\n🍎 NAVIGATION — macOS DOCK (CRITICAL)\n═══════════════════════════════════════\n\nThere is NO sidebar. NO top navbar. The ONLY navigation is a floating macOS-style dock fixed at the bottom center of the screen.\n\nDock specifications:\n- Position: fixed, bottom: 16px, left: 50%, transform: translateX(-50%), z-index: 9999\n- Background: glassmorphism pill (blur 40px, dark tint, border rgba(255,255,255,0.08))\n- Box-shadow: 0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)\n- Padding: 12px 24px, border-radius: 28px\n- Icon default size: 48px, hover: 64px, neighbor: 56px\n- Magnification: Framer Motion animate width/height with spring animation\n- Active state: glowing dot below icon in #6366F1\n- Tooltip: label above icon with fade animation on hover\n- Keyboard shortcut: ⌘1 to ⌘0 for each module\n\nDock icons (Lucide React icons):\n1. LayoutDashboard — Dashboard — color #818CF8\n2. ShoppingCart — POS — color #10B981\n3. Package — Products — color #F59E0B\n4. Warehouse — Stock — color #3B82F6\n5. ClipboardList — Inventory — color #8B5CF6\n6. TrendingUp — Sales — color #10B981\n[separator]\n7. Users — Clients — color #F472B6\n8. Truck — Suppliers — color #FB923C\n9. FileText — Invoices — color #34D399\n[separator]\n10. Settings2 — Admin — color #94A3B8\n\nAdd a right-click context menu on each dock icon showing: Open, Open in new panel, Keyboard shortcut.\n\nAlso implement ⌘K global command palette (Cmdk library) that searches across all modules.\n\n═══════════════════════════════════════\n📊 MODULE: DASHBOARD\n═══════════════════════════════════════\n\nBento grid layout (CSS grid with varying card sizes). Include:\n- 4 KPI stat cards: Today Revenue, Transactions, Low Stock Alerts, New Clients. Each with animated counter (framer-motion), trend percentage badge (green up arrow / red down), and subtle icon background.\n- Revenue area chart (Recharts AreaChart, 30 days, gradient fill from #6366F1 to transparent)\n- Top 5 Products horizontal bar chart\n- Recent Transactions activity feed (timeline style)\n- Stock Alerts list with urgency color coding\n- Cash Register current session card\n\n═══════════════════════════════════════\n🛒 MODULE: POINT OF SALE (POS)\n═══════════════════════════════════════\n\nThe POS is the most performance-critical screen. Three-panel layout:\n\nLEFT PANEL (45%):\n- Auto-focused barcode/search input at top\n- Category filter pills (horizontal scroll)\n- Product grid: 3-4 column grid of product cards with image, name, price, stock badge, +add button\n- Virtual numeric keypad for quantity input\n\nCENTER PANEL (30%):\n- Cart item list: product name, qty stepper (+/-), unit price, line total, remove\n- Discount input (per item and global percentage)\n- Cart totals: subtotal, discount, tax (itemized), TOTAL in large bold\n- Hold order button (saves to pending)\n- Clear cart button\n- Selected client badge with selector modal trigger\n\nRIGHT PANEL (25%):\n- Total amount — very large font (2rem+), glowing brand color\n- Payment method buttons: Cash, Card, Mixed, Credit (toggle selection)\n- Cash input + automatic change calculator\n- CHARGE button: large, full-width, brand_accent green, pulsing glow on hover\n- Print receipt / Email receipt toggles\n- Session total mini stats\n\nAdd keyboard shortcuts: F1=focus search, F2=new cart, Enter=charge, Escape=cancel\n\n═══════════════════════════════════════\n📦 MODULE: PRODUCTS\n═══════════════════════════════════════\n\nTanStack Table with columns: Image, Name, SKU, Category, Price, Cost Price, Stock, Status (Active/Inactive), Actions menu.\nFeatures: global search, multi-column sort, category filter, bulk actions (select all, update price, archive), CSV import/export.\nProduct detail: right slide-over panel (480px) with full edit form (React Hook Form + Zod validation): name, description, SKU, barcode, category, price, cost, tax rate, image upload, variants, stock alert threshold.\n\n═══════════════════════════════════════\n🏭 MODULE: STOCK\n═══════════════════════════════════════\n\nSplit view: stock overview table (left) + movement history (right).\nTable: product, category, current stock, min threshold, status badge (In Stock green / Low Stock orange / Out of Stock red), last movement date, adjust button.\nMovement history: timeline component, each entry shows: date, type (In/Out/Adjustment), qty, reason, user.\nStock adjustment modal: product selector, quantity, type, reason, notes.\nExport to PDF stock report button.\n\n═══════════════════════════════════════\n📋 MODULE: INVENTORY\n═══════════════════════════════════════\n\nWizard workflow:\n1. Create Session (date, notes, scope: all/category)\n2. Count products (scan or search, enter physical count)\n3. Review discrepancies (expected vs actual, highlighted diffs)\n4. Validate & Apply adjustments\nHistory list of past inventory sessions with PDF export.\n\n═══════════════════════════════════════\n📈 MODULE: SALES\n═══════════════════════════════════════\n\nTop: date range picker + summary metrics row (Total Revenue, Total Sales count, Avg Ticket, Return Rate).\nArea chart: daily revenue over selected period.\nSales table: TanStack Table with columns: ID, Date, Client, Items count, Payment method, Total, Status, Actions.\nRow click → detail slide-over showing full sale breakdown.\nReturn/refund action from slide-over.\nExport to PDF / Excel.\n\n═══════════════════════════════════════\n👥 MODULE: CLIENTS\n═══════════════════════════════════════\n\nClient list table: Avatar initials, Name, Phone, Email, Total Spent, Visits, Last Visit, Tags, Actions.\nClient profile slide-over: info section, purchase history timeline, loyalty points balance, notes textarea.\nAdd/Edit modal: React Hook Form with fields: name, phone, email, address, birthday, tags.\n\n═══════════════════════════════════════\n🚚 MODULE: SUPPLIERS\n═══════════════════════════════════════\n\nSupplier directory table: name, contact, products count, pending orders, last order date.\nSupplier profile slide-over: details + linked products + purchase order history.\nCreate Purchase Order modal: supplier, products selection table with quantities, expected delivery date.\nPO status tracking: Pending → Sent → Partial → Received.\nReceive goods workflow: triggers stock auto-update.\n\n═══════════════════════════════════════\n🧾 MODULE: INVOICES\n═══════════════════════════════════════\n\nInvoice list: ID, Client, Date, Due Date, Amount, Status badge (Draft/Sent/Paid/Overdue), Actions.\nCreate invoice: client selector, line items table with product search, quantities, prices, discounts.\nPDF generation using @react-pdf/renderer with:\n- Company logo top-left\n- Invoice number + date top-right\n- Bill-to client block\n- Itemized table: Description, Qty, Unit Price, Discount %, Total\n- Totals section: subtotal, discount, tax (VAT breakdown), TOTAL bold large\n- Footer: payment terms, bank details, legal mentions\n- Company brand primary color used in header and table headers\nPDF preview in split view. Send by email button. Download button.\n\n═══════════════════════════════════════\n⚙️ MODULE: ADMIN\n═══════════════════════════════════════\n\nSettings page with left sidebar navigation:\n1. Company Details: all company fields with logo upload\n2. Branding: color picker for primary color, invoice template preview live update\n3. User Management: user table, invite modal, role selector (Admin/Manager/Cashier/Viewer), permission matrix grid\n4. POS Settings: tax rates, receipt config, printer settings\n5. Integrations: SMTP email, API keys\n6. Backup: export/import data buttons\n\n═══════════════════════════════════════\n🔧 GLOBAL COMPONENTS\n═══════════════════════════════════════\n\nToast notifications: Sonner or react-hot-toast, top-right, dark themed.\nConfirm dialog: modal with red destructive button for all delete actions.\nLoading states: skeleton screens (not spinners) for all data loads.\nEmpty states: centered SVG illustration + descriptive text + CTA button for every empty list/table.\nError boundary: full-screen friendly error page with retry button.\nResponsive: all modules adapt to tablet (768px). POS has simplified 2-panel layout on tablet. On mobile: single panel with bottom sheet cart.\n\nGlobal keyboard shortcuts:\n- ⌘K: command palette\n- ⌘1-0: dock navigation\n- ⌘N: create new (context-aware)\n- ⌘S: save current form\n- Escape: close modal/slide-over\n- ?: show shortcuts cheat sheet\n\n═══════════════════════════════════════\n📁 FILE STRUCTURE\n═══════════════════════════════════════\n\nsrc/\n  components/\n    dock/           → MacOsDock.tsx, DockIcon.tsx\n    layout/         → AppShell.tsx, CommandPalette.tsx\n    ui/             → (shadcn components)\n    shared/         → DataTable.tsx, SlideOver.tsx, StatCard.tsx, EmptyState.tsx\n  modules/\n    dashboard/\n    pos/\n    products/\n    stock/\n    inventory/\n    sales/\n    clients/\n    suppliers/\n    invoices/\n    admin/\n  store/            → Zustand stores per module\n  hooks/            → useDebounce, useKeyboard, useLocalStorage\n  lib/              → api.ts, pdf.ts, utils.ts, validations.ts\n  types/            → index.ts with all TypeScript interfaces\n  styles/           → globals.css with Tailwind config\n\nStart by generating:\n1. tailwind.config.ts with the full color palette\n2. src/components/dock/MacOsDock.tsx with full magnification animation\n3. src/components/layout/AppShell.tsx\n4. src/types/index.ts with all data models\n5. Then generate each module in order."
+    },
+  
+    "module_data_models": {
+      "Product": {
+        "id": "string",
+        "name": "string",
+        "sku": "string",
+        "barcode": "string",
+        "description": "string",
+        "categoryId": "string",
+        "price": "number",
+        "costPrice": "number",
+        "taxRate": "number",
+        "stock": "number",
+        "minStockAlert": "number",
+        "imageUrl": "string",
+        "variants": "ProductVariant[]",
+        "status": "active | inactive",
+        "createdAt": "Date",
+        "updatedAt": "Date"
+      },
+      "Sale": {
+        "id": "string",
+        "saleNumber": "string",
+        "clientId": "string | null",
+        "userId": "string",
+        "items": "SaleItem[]",
+        "subtotal": "number",
+        "discountAmount": "number",
+        "taxAmount": "number",
+        "total": "number",
+        "paymentMethod": "cash | card | mixed | credit",
+        "cashTendered": "number | null",
+        "change": "number | null",
+        "status": "completed | refunded | partial_refund",
+        "notes": "string",
+        "createdAt": "Date"
+      },
+      "Client": {
+        "id": "string",
+        "name": "string",
+        "phone": "string",
+        "email": "string",
+        "address": "string",
+        "birthday": "Date | null",
+        "loyaltyPoints": "number",
+        "tags": "string[]",
+        "notes": "string",
+        "createdAt": "Date"
+      },
+      "Supplier": {
+        "id": "string",
+        "name": "string",
+        "contactName": "string",
+        "phone": "string",
+        "email": "string",
+        "address": "string",
+        "paymentTerms": "string",
+        "notes": "string"
+      },
+      "Invoice": {
+        "id": "string",
+        "invoiceNumber": "string",
+        "type": "invoice | receipt | quote",
+        "clientId": "string",
+        "items": "InvoiceItem[]",
+        "subtotal": "number",
+        "discountAmount": "number",
+        "taxBreakdown": "TaxLine[]",
+        "total": "number",
+        "status": "draft | sent | paid | overdue | cancelled",
+        "issueDate": "Date",
+        "dueDate": "Date",
+        "paymentTerms": "string",
+        "notes": "string"
+      },
+      "User": {
+        "id": "string",
+        "name": "string",
+        "email": "string",
+        "role": "admin | manager | cashier | viewer",
+        "avatarUrl": "string",
+        "status": "active | inactive",
+        "lastLogin": "Date",
+        "createdAt": "Date"
+      },
+      "CompanySettings": {
+        "name": "string",
+        "logoUrl": "string",
+        "address": "string",
+        "taxId": "string",
+        "registrationNumber": "string",
+        "phone": "string",
+        "email": "string",
+        "website": "string",
+        "currency": "string",
+        "currencySymbol": "string",
+        "defaultTaxRate": "number",
+        "taxRates": "TaxRate[]",
+        "brandPrimaryColor": "string",
+        "invoiceFooterText": "string",
+        "invoiceHeaderImage": "string"
+      }
+    }
+  }

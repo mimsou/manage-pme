@@ -1,0 +1,537 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTIFICATION & UTILISATEURS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  VENDEUR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole @default(VENDEUR)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  sales         Sale[]
+  inventories   Inventory[]
+  stockMovements StockMovement[]
+  cashRegisters CashRegister[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// IDENTITÉ DE LA SOCIÉTÉ (documents, factures)
+// ============================================
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String?
+  address     String?
+  city        String?
+  postalCode  String?
+  country     String?  @default("FR")
+  phone       String?
+  email       String?
+  siret       String?
+  vatNumber   String?
+  logo        String?  // base64 data URL ou URL du logo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company")
+}
+
+// ============================================
+// PRODUITS & CATÉGORIES
+// ============================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  barcode         String?  @unique
+  sku             String   @unique
+  categoryId      String
+  purchasePrice   Decimal  @db.Decimal(10, 2)
+  salePrice       Decimal  @db.Decimal(10, 2)
+  stockMin        Int      @default(0)
+  stockCurrent    Int      @default(0)
+  isActive        Boolean  @default(true)
+  hasVariants     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category        Category         @relation(fields: [categoryId], references: [id])
+  variants        ProductVariant[]
+  stockMovements  StockMovement[]
+  saleItems       SaleItem[]
+  inventoryItems  InventoryItem[]
+  priceHistory    PriceHistory[]
+  supplierProducts SupplierProduct[]
+  purchaseItems   PurchaseItem[]
+
+  @@index([barcode])
+  @@index([sku])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id          String   @id @default(uuid())
+  productId   String
+  name        String // ex: "Taille M", "Couleur Rouge" (pour compatibilité)
+  value       String // ex: "M", "Rouge" (pour compatibilité)
+  attributes  Json?   // { color: "NOIR", size: "M" } pour plusieurs attributs
+  sku         String   @unique
+  barcode     String?  @unique
+  purchasePrice Decimal? @db.Decimal(10, 2)
+  salePrice   Decimal? @db.Decimal(10, 2)
+  stockCurrent Int     @default(0)
+  stockMin     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([sku])
+  @@index([barcode])
+  @@map("product_variants")
+}
+
+model SkuComponent {
+  id        String   @id @default(uuid())
+  type      String   // "color", "size", "material", etc.
+  value     String   // "NOIR", "M", "COTON", etc.
+  createdAt DateTime @default(now())
+  
+  @@unique([type, value])
+  @@index([type])
+  @@map("sku_components")
+}
+
+model PriceHistory {
+  id           String   @id @default(uuid())
+  productId    String
+  purchasePrice Decimal? @db.Decimal(10, 2)
+  salePrice    Decimal  @db.Decimal(10, 2)
+  changedAt    DateTime @default(now())
+  reason       String?  // "Ajustement", "Promotion", "Négociation"
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("price_history")
+}
+
+// ============================================
+// CLIENTS
+// ============================================
+
+enum ClientType {
+  PARTICULIER
+  SOCIETE
+}
+
+model Client {
+  id                  String     @id @default(uuid())
+  type                ClientType @default(PARTICULIER)
+  firstName           String?
+  lastName            String?
+  companyName         String?
+  email               String?
+  phone               String?
+  address             String?
+  city                String?
+  postalCode          String?
+  country             String?    @default("FR")
+  vatNumber           String?    // TVA intracommunautaire pour B2B
+  loyaltyPoints       Int        @default(0)
+  totalPurchases      Decimal    @default(0) @db.Decimal(10, 2)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  sales Sale[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("clients")
+}
+
+// ============================================
+// FOURNISSEURS
+// ============================================
+
+model Supplier {
+  id              String   @id @default(uuid())
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  postalCode      String?
+  country         String?  @default("FR")
+  vatNumber       String?
+  paymentTerms    String?  // "30 jours", "60 jours"
+  discount        Decimal? @default(0) @db.Decimal(5, 2) // Remise %
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contacts        SupplierContact[]
+  products        SupplierProduct[]
+  purchases       Purchase[]
+  stockMovements  StockMovement[]
+
+  @@index([email])
+  @@map("suppliers")
+}
+
+model SupplierContact {
+  id         String   @id @default(uuid())
+  supplierId String
+  name       String
+  email      String?
+  phone      String?
+  position   String?  // "Responsable achats", "Commercial"
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_contacts")
+}
+
+model SupplierProduct {
+  id          String   @id @default(uuid())
+  supplierId  String
+  productId   String
+  supplierSku String?  // Référence fournisseur
+  price       Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, productId])
+  @@map("supplier_products")
+}
+
+// ============================================
+// ACHATS & ENTREES
+// ============================================
+
+enum PurchaseStatus {
+  PENDING      // En attente
+  RECEIVED      // Reçu
+  PARTIAL       // Partiellement reçu
+  CANCELLED     // Annulé
+  RETURNED      // Retourné
+}
+
+model Purchase {
+  id              String        @id @default(uuid())
+  supplierId      String
+  reference       String        @unique // Référence bon de commande
+  invoiceNumber   String?       // N° facture fournisseur
+  invoiceDate     DateTime?
+  deliveryDate    DateTime?
+  status          PurchaseStatus @default(PENDING)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  items       PurchaseItem[]
+  stockMovements StockMovement[]
+
+  @@index([supplierId])
+  @@index([reference])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  productId   String
+  quantity    Int
+  receivedQty Int      @default(0)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+// ============================================
+// VENTES & POS
+// ============================================
+
+enum SaleType {
+  TICKET  // B2C
+  INVOICE // B2B avec TVA
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MIXED
+  OTHER
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model Sale {
+  id              String       @id @default(uuid())
+  clientId        String?
+  userId          String       // Vendeur
+  cashRegisterId  String?      // Caisse associée
+  type            SaleType     @default(TICKET)
+  status          SaleStatus   @default(COMPLETED)
+  ticketNumber    String?      @unique // Numéro de ticket
+  invoiceNumber   String?      @unique // Numéro de facture
+  subtotal        Decimal      @db.Decimal(10, 2)
+  discount        Decimal      @default(0) @db.Decimal(10, 2)
+  tax             Decimal      @default(0) @db.Decimal(10, 2) // TVA
+  total           Decimal      @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  cashAmount      Decimal?     @db.Decimal(10, 2)
+  cardAmount      Decimal?     @db.Decimal(10, 2)
+  margin          Decimal?     @db.Decimal(10, 2) // Marge brute
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  client       Client?      @relation(fields: [clientId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  items        SaleItem[]
+  refunds      SaleRefund[]
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([cashRegisterId])
+  @@index([createdAt])
+  @@index([ticketNumber])
+  @@index([invoiceNumber])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String   @id @default(uuid())
+  saleId      String
+  productId   String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  discount    Decimal  @default(0) @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  purchasePrice Decimal? @db.Decimal(10, 2) // Prix d'achat pour calcul marge
+  margin      Decimal? @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+model SaleRefund {
+  id              String   @id @default(uuid())
+  saleId          String
+  reason          String?
+  refundAmount    Decimal  @db.Decimal(10, 2)
+  refundedItems   Json?    // Détails des articles remboursés
+  createdAt       DateTime @default(now())
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@map("sale_refunds")
+}
+
+// ============================================
+// CAISSE
+// ============================================
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+model CashRegister {
+  id              String             @id @default(uuid())
+  userId          String             // Caissier
+  openDate        DateTime           @default(now())
+  closeDate       DateTime?
+  status          CashRegisterStatus @default(OPEN)
+  initialAmount   Decimal            @db.Decimal(10, 2) // Montant d'ouverture
+  expectedAmount  Decimal?           @db.Decimal(10, 2) // Montant théorique
+  actualAmount    Decimal?           @db.Decimal(10, 2) // Montant réel
+  difference      Decimal?           @db.Decimal(10, 2) // Écart
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user  User    @relation(fields: [userId], references: [id])
+  sales Sale[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([openDate])
+  @@map("cash_registers")
+}
+
+// ============================================
+// STOCKS & MOUVEMENTS
+// ============================================
+
+enum StockMovementType {
+  ENTRY      // Entrée
+  EXIT       // Sortie
+  SALE       // Vente
+  INVENTORY  // Inventaire
+  ADJUSTMENT // Ajustement
+  RETURN     // Retour fournisseur
+  LOSS       // Perte
+  THEFT      // Vol
+  DAMAGE     // Casse
+}
+
+model StockMovement {
+  id              String            @id @default(uuid())
+  productId       String
+  type            StockMovementType
+  quantity        Int
+  unitPrice       Decimal?         @db.Decimal(10, 2)
+  totalValue      Decimal?         @db.Decimal(10, 2)
+  reason          String?          // Raison du mouvement
+  reference       String?          // Référence (vente, achat, inventaire)
+  referenceId     String?          // ID de la référence
+  userId          String?          // Utilisateur ayant effectué le mouvement
+  supplierId      String?
+  purchaseId      String?          // Achat associé
+  createdAt       DateTime         @default(now())
+
+  product  Product   @relation(fields: [productId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  purchase Purchase? @relation(fields: [purchaseId], references: [id])
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceId])
+  @@index([purchaseId])
+  @@map("stock_movements")
+}
+
+// ============================================
+// INVENTAIRES
+// ============================================
+
+enum InventoryStatus {
+  DRAFT      // Brouillon
+  IN_PROGRESS // En cours
+  COMPLETED  // Terminé
+  VALIDATED  // Validé
+}
+
+model Inventory {
+  id              String          @id @default(uuid())
+  reference       String          @unique
+  userId          String          // Responsable inventaire
+  status          InventoryStatus @default(DRAFT)
+  startDate       DateTime?
+  endDate         DateTime?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id])
+  items  InventoryItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("inventories")
+}
+
+model InventoryItem {
+  id              String   @id @default(uuid())
+  inventoryId     String
+  productId       String
+  theoreticalQty  Int      // Quantité théorique
+  countedQty      Int      // Quantité comptée
+  difference      Int      // Écart
+  reason          String?  // Justification écart (perte, vol, casse, erreur)
+  createdAt       DateTime @default(now())
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([inventoryId])
+  @@index([productId])
+  @@map("inventory_items")
+}
+
