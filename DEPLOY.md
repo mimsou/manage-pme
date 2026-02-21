@@ -18,6 +18,7 @@
    - Connectez votre repo GitHub et sélectionnez le repo contenant `render.yaml`
 
 3. **Appliquer le Blueprint**
+   - **Important** : laissez **Root Directory** vide (ou `.`) pour que Render utilise le `Dockerfile` à la racine du repo et inclue le frontend dans l’image.
    - Render détecte `render.yaml` et crée :
      - une base **PostgreSQL** (`manage-pme-db`)
      - un **Web Service** Docker (`manage-pme`) qui build l’image et exécute les migrations au démarrage

@@ -2,8 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { join, resolve } from 'path';
+import { existsSync, statSync } from 'fs';
 import { AppModule } from './app.module';
 import { DecimalToNumberInterceptor } from './common/interceptors/decimal-to-number.interceptor';
 
@@ -42,12 +42,22 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   // En production (Docker) : servir le frontend buildé depuis /app/client
+  // On utilise un middleware en premier pour que GET / et les assets soient servis
+  // avant le routeur Nest (sinon Nest renvoie 404 pour GET /).
   const clientPath = join(process.cwd(), 'client');
   if (existsSync(clientPath)) {
-    app.useStaticAssets(clientPath, { index: false });
-    // SPA fallback : toute requête GET non-API renvoie index.html
-    app.getHttpAdapter().get('*', (req, res) => {
-      res.sendFile(join(clientPath, 'index.html'));
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+      const pathToTry = req.path === '/' ? 'index.html' : req.path;
+      const filePath = resolve(join(clientPath, pathToTry));
+      if (!filePath.startsWith(resolve(clientPath))) return next();
+      try {
+        if (existsSync(filePath) && statSync(filePath).isFile())
+          return res.sendFile(filePath);
+      } catch {
+        // fichier inexistant → SPA fallback
+      }
+      return res.sendFile(join(clientPath, 'index.html'));
     });
   }
 
