@@ -139,7 +139,7 @@ export default function ProductsPage() {
     ),
   });
 
-  const damageType = watchDamage('type');
+  watchDamage('type');
 
   const purchasePrice = watch('purchasePrice') || 0;
   const salePrice = watch('salePrice') || 0;

@@ -1,6 +1,5 @@
 import { Product } from './product';
 import { Supplier } from './supplier';
-import { User } from './sale';
 
 export enum PurchaseStatus {
   PENDING = 'PENDING',

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Package,
@@ -16,10 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
-const DOCK_MODULES: Array<
-  | { id: string; href: string; label: string; icon: React.ComponentType<{ className?: string; size?: number }>; color: string }
-  | { separator: true }
-> = [
+type DockItem = { id: string; href: string; label: string; icon: LucideIcon; color: string };
+const DOCK_MODULES: Array<DockItem | { separator: true }> = [
   { id: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard, color: '#818CF8' },
   { id: 'pos', href: '/pos', label: 'Point de Vente', icon: ShoppingCart, color: '#10B981' },
   { id: 'products', href: '/products', label: 'Produits', icon: Package, color: '#F59E0B' },
@@ -111,15 +110,16 @@ export function Dock() {
               />
             );
           }
+          const item = module as DockItem;
           const idx = iconIndex++;
-          const Icon = module.icon;
-          const isActive = pathMatches(module.href);
+          const Icon = item.icon;
+          const isActive = pathMatches(item.href);
           const size = getSize(idx);
-          const containerBg = isActive ? hexToRgba(module.color, 0.18) : hexToRgba(module.color, 0.1);
+          const containerBg = isActive ? hexToRgba(item.color, 0.18) : hexToRgba(item.color, 0.1);
 
           return (
             <div
-              key={module.id}
+              key={item.id}
               className="relative flex flex-col items-center"
               onMouseEnter={() => setHoveredIndex(idx)}
               onMouseLeave={() => setHoveredIndex(null)}
@@ -146,11 +146,11 @@ export function Dock() {
                     padding: '3px 8px',
                   }}
                 >
-                  {module.label}
+                  {item.label}
                 </div>
               </motion.div>
 
-              <Link to={module.href} className="flex flex-col items-center outline-none">
+              <Link to={item.href} className="flex flex-col items-center outline-none">
                 <motion.div
                   layout
                   transition={{ type: 'spring', stiffness: 500, damping: 28 }}
@@ -161,13 +161,13 @@ export function Dock() {
                     minWidth: size,
                     minHeight: size,
                     background: containerBg,
-                    border: isActive ? `1px solid ${hexToRgba(module.color, 0.4)}` : 'none',
+                    border: isActive ? `1px solid ${hexToRgba(item.color, 0.4)}` : 'none',
                   }}
                 >
                   <Icon
                     className="flex-shrink-0"
                     size={18}
-                    style={{ color: module.color }}
+                    style={{ color: item.color }}
                   />
                 </motion.div>
                 {isActive && (
@@ -176,8 +176,8 @@ export function Dock() {
                     style={{
                       width: 4,
                       height: 4,
-                      background: module.color,
-                      boxShadow: `0 0 6px ${hexToRgba(module.color, 0.8)}`,
+                      background: item.color,
+                      boxShadow: `0 0 6px ${hexToRgba(item.color, 0.8)}`,
                     }}
                   />
                 )}

@@ -40,7 +40,7 @@ export function SalesContent() {
   // Infos société pour factures / tickets
   const [company, setCompany] = useState<CompanyInfo | null>(null);
 
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const { currencyLabel, toDefault } = useDefaultCurrency();
 
   useEffect(() => {

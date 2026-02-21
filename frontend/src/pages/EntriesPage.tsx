@@ -12,8 +12,6 @@ import {
   Trash2,
   Filter,
   Package,
-  Truck,
-  FileText,
   Printer,
   CheckCircle,
   XCircle,
@@ -31,8 +29,6 @@ import {
   Purchase,
   PurchaseStatus,
   CreatePurchaseDto,
-  ReceivePurchaseDto,
-  PurchaseItem,
 } from '@/types/purchase';
 import { Supplier } from '@/types/supplier';
 import { Product } from '@/types/product';
@@ -49,13 +45,8 @@ const purchaseSchema = z.object({
   notes: z.string().optional(),
 });
 
-const receiveItemSchema = z.object({
-  itemId: z.string(),
-  receivedQuantity: z.number().min(0, 'La quantité doit être positive'),
-});
-
 export default function EntriesPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +82,6 @@ export default function EntriesPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    watch,
   } = useForm<CreatePurchaseDto>({
     resolver: zodResolver(purchaseSchema),
   });

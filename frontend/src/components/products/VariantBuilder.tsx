@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Copy, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { productsApi } from '@/api/products';
 import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 

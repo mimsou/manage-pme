@@ -50,7 +50,7 @@ function toCssVars(t: Theme): Record<string, string> {
     '--line-height-relaxed': String(t.typography.lineHeight.relaxed),
     // Spacing (scale indices 0-13)
     ...Object.fromEntries(
-      t.spacing.scale.map((v, i) => [`--spacing-${i}`, `${v}px`])
+      t.spacing.scale.map((v: number, i: number) => [`--spacing-${i}`, `${v}px`])
     ),
     '--spacing-unit': `${t.spacing.unit}px`,
     // Border radius

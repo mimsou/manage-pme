@@ -159,7 +159,7 @@ export function generateBarcodeLabel(
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  doc.internal.pageSize.getHeight(); // keep for aspect if needed
   const margin = dimensions.margin;
 
   // Nom du produit

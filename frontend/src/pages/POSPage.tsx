@@ -153,22 +153,6 @@ export default function POSPage() {
     setCart(cart.filter((item) => item.product.id !== productId));
   };
 
-  const updatePrice = (productId: string, price: number) => {
-    setCart(
-      cart.map((item) =>
-        item.product.id === productId ? { ...item, unitPrice: price } : item
-      )
-    );
-  };
-
-  const updateDiscount = (productId: string, discount: number) => {
-    setCart(
-      cart.map((item) =>
-        item.product.id === productId ? { ...item, discount } : item
-      )
-    );
-  };
-
   const subtotal = cart.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity - item.discount,
     0
@@ -205,7 +189,7 @@ export default function POSPage() {
           handleBarcodeScan(decodedText);
           stopScanning();
         },
-        (errorMessage) => {
+        (_errorMessage) => {
           // Ignore errors
         }
       );

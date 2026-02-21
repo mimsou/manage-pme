@@ -204,7 +204,6 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
 
   // Tableau des produits
   yPos += 15;
-  const tableStartY = yPos;
   const tableWidth = pageWidth - 40;
   const colWidths = [80, 20, 30, 30, 30];
   const colX = [20, 100, 120, 150, 180];

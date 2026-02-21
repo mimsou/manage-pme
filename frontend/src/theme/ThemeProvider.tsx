@@ -53,15 +53,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     overrides ? deepMerge(defaultTheme as Record<string, unknown>, overrides as Record<string, unknown>) as Theme : defaultTheme
   );
 
-  const applyAndPersist = useCallback((next: Theme) => {
-    setMergedTheme(next);
-    applyThemeToDom(next);
-    const overridesToSave = JSON.parse(JSON.stringify(next)) as Partial<Theme>;
-    saveOverrides(overridesToSave);
-  }, []);
-
   const updateToken = useCallback(<K extends keyof Theme>(group: K, key: string, value: unknown) => {
-    setMergedTheme((prev) => {
+    setMergedTheme((prev: Theme) => {
       const groupObj = prev[group];
       if (groupObj == null || typeof groupObj !== 'object') return prev;
       const next = { ...prev, [group]: { ...(groupObj as Record<string, unknown>), [key]: value } };
