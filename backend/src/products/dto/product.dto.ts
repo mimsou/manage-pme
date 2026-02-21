@@ -45,6 +45,11 @@ export class CreateProductDto {
   @Min(0)
   salePrice: number;
 
+  @ApiProperty({ required: false, description: 'Unité de vente (ex: pièce, kg, m, L)' })
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
   @ApiProperty({ required: false, default: 0 })
   @IsInt()
   @IsOptional()
@@ -108,6 +113,11 @@ export class UpdateProductDto {
   @IsOptional()
   @Min(0)
   stockMin?: number;
+
+  @ApiProperty({ required: false, description: 'Unité de vente (ex: pièce, kg, m, L)' })
+  @IsString()
+  @IsOptional()
+  unit?: string;
 
   @ApiProperty({ required: false })
   @IsBoolean()

@@ -107,20 +107,20 @@ export default function CompanyIdentityPage() {
   };
 
   if (loading) {
-    return <div className="text-gray-500">Chargement...</div>;
+    return <div className="text-text-muted">Chargement...</div>;
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Identité de la société</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-8">
+      <h1 className="page-title" style={{ marginBottom: 16 }}>Identité de la société</h1>
+      <p className="text-text-secondary mb-8">
         Ces informations seront affichées sur les documents (factures, tickets, etc.).
       </p>
 
       <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
         {/* Logo */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-text-primary mb-2">
             Logo
           </label>
           <div className="flex items-center gap-4">
@@ -128,10 +128,10 @@ export default function CompanyIdentityPage() {
               <img
                 src={company.logo}
                 alt="Logo"
-                className="h-20 w-auto object-contain border border-gray-200 dark:border-gray-600 rounded"
+                className="h-20 w-auto object-contain border border-border-default rounded"
               />
             ) : (
-              <div className="h-20 w-32 border border-dashed border-gray-300 dark:border-gray-600 rounded flex items-center justify-center text-gray-400 text-sm">
+              <div className="h-20 w-32 border border-dashed border-border-default rounded flex items-center justify-center text-text-muted text-sm">
                 Aucun logo
               </div>
             )}
@@ -154,7 +154,7 @@ export default function CompanyIdentityPage() {
                 <button
                   type="button"
                   onClick={() => handleChange('logo', null)}
-                  className="ml-2 text-sm text-red-600 hover:underline"
+                  className="ml-2 text-sm text-danger hover:underline"
                 >
                   Supprimer
                 </button>
@@ -165,7 +165,7 @@ export default function CompanyIdentityPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Raison sociale / Nom</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Raison sociale / Nom</label>
             <input
               type="text"
               value={company.name ?? ''}
@@ -175,7 +175,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Adresse</label>
             <input
               type="text"
               value={company.address ?? ''}
@@ -185,7 +185,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ville</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Ville</label>
             <input
               type="text"
               value={company.city ?? ''}
@@ -195,7 +195,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Code postal</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Code postal</label>
             <input
               type="text"
               value={company.postalCode ?? ''}
@@ -205,7 +205,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pays</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Pays</label>
             <input
               type="text"
               value={company.country ?? ''}
@@ -215,7 +215,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Téléphone</label>
             <input
               type="text"
               value={company.phone ?? ''}
@@ -225,7 +225,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Email</label>
             <input
               type="email"
               value={company.email ?? ''}
@@ -235,7 +235,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SIRET</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">SIRET</label>
             <input
               type="text"
               value={company.siret ?? ''}
@@ -245,7 +245,7 @@ export default function CompanyIdentityPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° TVA intracommunautaire</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">N° TVA intracommunautaire</label>
             <input
               type="text"
               value={company.vatNumber ?? ''}

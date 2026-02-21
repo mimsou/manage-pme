@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { productsApi } from '@/api/products';
 import { categoriesApi } from '@/api/categories';
 import { stockApi } from '@/api/stock';
@@ -18,6 +18,23 @@ import { Product, Category, CreateProductDto } from '@/types/product';
 import { StockMovement, StockMovementType, CreateDamageDto } from '@/types/stock';
 import { useAuthStore } from '@/stores/authStore';
 import { VariantBuilder } from '@/components/products/VariantBuilder';
+import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
+
+const PRODUCT_UNITS = [
+  { value: 'pièce', label: 'pièce' },
+  { value: 'kg', label: 'kg' },
+  { value: 'g', label: 'g' },
+  { value: 'L', label: 'L' },
+  { value: 'mL', label: 'mL' },
+  { value: 'm', label: 'm' },
+  { value: 'm²', label: 'm²' },
+  { value: 'm³', label: 'm³' },
+  { value: 'lot', label: 'lot' },
+  { value: 'paquet', label: 'paquet' },
+  { value: 'boîte', label: 'boîte' },
+  { value: 'rouleau', label: 'rouleau' },
+  { value: 'sachet', label: 'sachet' },
+];
 
 const productSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
@@ -26,6 +43,7 @@ const productSchema = z.object({
   categoryId: z.string().uuid('La catégorie doit être valide').min(1, 'La catégorie est requise'),
   purchasePrice: z.number().min(0, 'Le prix doit être positif').optional(),
   salePrice: z.number().min(0, 'Le prix doit être positif').optional(),
+  unit: z.string().optional(),
   stockMin: z.number().min(0).optional(),
   stockCurrent: z.number().min(0).optional(),
   description: z.string().optional(),
@@ -65,6 +83,7 @@ export default function ProductsPage() {
     generatedSku?: string;
   }>>([]);
   const { user } = useAuthStore();
+  const { currencyLabel } = useDefaultCurrency();
 
   const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
@@ -97,6 +116,7 @@ export default function ProductsPage() {
       hasVariants: false,
       purchasePrice: 0,
       salePrice: 0,
+      unit: 'pièce',
     },
   });
 
@@ -231,6 +251,7 @@ export default function ProductsPage() {
             name: data.name,
             description: data.description,
             categoryId: data.categoryId,
+            unit: data.unit || 'pièce',
             variants: variants.map(v => ({
               attributes: v.attributes,
               purchasePrice: v.purchasePrice!,
@@ -276,6 +297,7 @@ export default function ProductsPage() {
       categoryId: product.categoryId,
       purchasePrice: product.purchasePrice,
       salePrice: product.salePrice,
+      unit: product.unit || 'pièce',
       stockMin: product.stockMin,
       stockCurrent: product.stockCurrent,
       description: product.description || '',
@@ -304,6 +326,7 @@ export default function ProductsPage() {
       stockMin: 0,
       stockCurrent: 0,
       hasVariants: false,
+      unit: 'pièce',
     });
     setIsModalOpen(true);
   };
@@ -439,61 +462,53 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Produits</h1>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+        <h1 className="page-title">Produits</h1>
         <div className="flex items-center gap-2">
           {isAdminOrManager && (
-            <Button variant="outline" onClick={handleNewCategory}>
-              <FolderPlus className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="btn" onClick={handleNewCategory}>
+              <FolderPlus className="w-3.5 h-3.5 mr-1.5" />
               Nouvelle catégorie
             </Button>
           )}
-          <Button variant="outline" onClick={handleShowHistory}>
-            <History className="w-4 h-4 mr-2" />
-            Historique des avaries
+          <Button variant="outline" className="btn" onClick={handleShowHistory}>
+            <History className="w-3.5 h-3.5 mr-1.5" />
+            Historique avaries
           </Button>
           {isAdminOrManager && (
-            <Button onClick={handleNew}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={handleNew} className="btn">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
               Nouveau produit
             </Button>
           )}
         </div>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Rechercher un produit..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1);
-              }}
-              icon={<Search className="w-4 h-4" />}
-            />
-            <Select
-              options={categoryOptions}
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" style={{ gap: 12 }}>
+        <Input
+          placeholder="Rechercher un produit..."
+          value={searchTerm}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+          icon={<Search className="w-3.5 h-3.5" />}
+        />
+        <Select
+          options={categoryOptions}
+          value={selectedCategory}
+          onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }}
+        />
+      </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="text-center py-8">Chargement...</div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Aucun produit trouvé</div>
-          ) : (
-            <>
-              <Table>
+      {loading ? (
+        <div className="text-center py-8 text-[13px] text-text-secondary">Chargement...</div>
+      ) : products.length === 0 ? (
+        <div className="rounded-[10px] border flex flex-col items-center justify-center py-12" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <Package className="w-9 h-9 mb-2" style={{ color: 'rgba(99,102,241,0.3)' }} />
+          <p className="text-[12px] font-medium text-text-muted">Aucun produit trouvé</p>
+          <p className="text-[11px] text-text-muted mt-0.5">Créez un produit ou modifiez les filtres</p>
+        </div>
+      ) : (
+        <>
+          <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nom</TableHead>
@@ -503,6 +518,7 @@ export default function ProductsPage() {
                     <TableHead>Prix d'achat</TableHead>
                     <TableHead>Prix de vente</TableHead>
                     <TableHead>Marge</TableHead>
+                    <TableHead>Unité</TableHead>
                     <TableHead>Stock</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -523,45 +539,46 @@ export default function ProductsPage() {
                         )}
                       </TableCell>
                       <TableCell>{product.category?.name || '-'}</TableCell>
-                      <TableCell>{product.purchasePrice.toFixed(2)} €</TableCell>
-                      <TableCell>{product.salePrice.toFixed(2)} €</TableCell>
-                      <TableCell>
-                        <span className={product.salePrice - product.purchasePrice >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {(product.salePrice - product.purchasePrice).toFixed(2)} €
-                        </span>
+                      <TableCell className="font-mono text-text-primary text-right">{Number(product.purchasePrice).toFixed(2)} {currencyLabel}</TableCell>
+                      <TableCell className="font-mono text-text-primary text-right">{Number(product.salePrice).toFixed(2)} {currencyLabel}</TableCell>
+                      <TableCell className={`font-mono text-right ${product.salePrice - product.purchasePrice >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {(Number(product.salePrice) - Number(product.purchasePrice)).toFixed(2)} {currencyLabel}
                       </TableCell>
-                      <TableCell>
-                        <span className={product.stockCurrent <= product.stockMin ? 'text-red-600 font-semibold' : ''}>
+                      <TableCell className="text-text-secondary text-[13px]">{product.unit || 'pièce'}</TableCell>
+                      <TableCell className="font-mono text-text-primary">
+                        <span className={product.stockCurrent <= product.stockMin ? 'text-danger font-semibold' : ''}>
                           {product.stockCurrent} / {product.stockMin}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                             onClick={() => handleDamage(product)}
                             title="Enregistrer une avarie"
                           >
-                            <AlertTriangle className="w-4 h-4" />
-                          </Button>
+                            <AlertTriangle className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                          </button>
                           {isAdminOrManager && (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <button
+                                type="button"
+                                className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                                 onClick={() => handleEdit(product)}
+                                title="Modifier"
                               >
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                                <Edit className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                              </button>
                               {user?.role === 'ADMIN' && (
-                                <Button
-                                  variant="danger"
-                                  size="sm"
+                                <button
+                                  type="button"
+                                  className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                                   onClick={() => handleDelete(product.id)}
+                                  title="Supprimer"
                                 >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                  <Trash2 className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                                </button>
                               )}
                             </>
                           )}
@@ -572,31 +589,15 @@ export default function ProductsPage() {
                 </TableBody>
               </Table>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Précédent
-                  </Button>
-                  <span className="text-sm text-gray-600">
-                    Page {page} sur {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Suivant
-                  </Button>
-                </div>
-              )}
-            </>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <Button variant="outline" className="btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Précédent</Button>
+              <span className="text-[13px] text-text-secondary">Page {page} sur {totalPages}</span>
+              <Button variant="outline" className="btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Suivant</Button>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       <Modal
         isOpen={isModalOpen}
@@ -648,6 +649,7 @@ export default function ProductsPage() {
                     categoryId,
                     sku: '',
                     barcode: watch('barcode'),
+                    unit: watch('unit') || 'pièce',
                     purchasePrice: 0,
                     salePrice: 0,
                     stockMin: 0,
@@ -664,7 +666,7 @@ export default function ProductsPage() {
                 }
               }}
               isLoading={isSubmitting}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg shadow-indigo-500/50"
+              className="bg-brand hover:bg-brand-dark text-text-primary font-semibold shadow-glow-primary transition-colors duration-default ease-default"
             >
               {editingProduct ? 'Modifier' : useVariants ? `Créer ${variants.length} produit${variants.length > 1 ? 's' : ''}` : 'Créer'}
             </Button>
@@ -697,6 +699,7 @@ export default function ProductsPage() {
                 categoryId,
                 sku: '',
                 barcode: watch('barcode'),
+                unit: watch('unit') || 'pièce',
                 purchasePrice: 0,
                 salePrice: 0,
                 stockMin: 0,
@@ -713,20 +716,20 @@ export default function ProductsPage() {
         >
           {/* En-tête avec toggle variantes */}
           {!editingProduct && (
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-center justify-between p-4 bg-brand/10 rounded-xl border-2 border-border-default">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                   useVariants 
-                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/50' 
-                    : 'bg-gray-200 dark:bg-gray-700'
+                    ? 'bg-brand shadow-glow-primary' 
+                    : 'bg-elevated'
                 }`}>
-                  <Package className={`w-6 h-6 ${useVariants ? 'text-white' : 'text-gray-500'}`} />
+                  <Package className={`w-6 h-6 ${useVariants ? 'text-text-primary' : 'text-text-muted'}`} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 dark:text-gray-100">
+                  <h3 className="font-bold text-text-primary">
                     {useVariants ? 'Mode Variantes' : 'Mode Simple'}
                   </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-text-secondary">
                     {useVariants 
                       ? 'Créez plusieurs produits avec attributs (couleur, taille, etc.)' 
                       : 'Créez un produit unique avec un SKU'}
@@ -745,15 +748,15 @@ export default function ProductsPage() {
                   }}
                   className="sr-only peer"
                 />
-                <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-indigo-500 peer-checked:to-purple-600"></div>
+                <div className="w-14 h-7 bg-elevated peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-text-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border-default after:border after:rounded-full after:h-6 after:w-6 after:transition-all duration-default ease-default peer-checked:bg-brand"></div>
               </label>
             </div>
           )}
 
           {/* Section Informations de base */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-4 flex items-center gap-2">
-              <div className="w-1 h-4 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
+          <div className="bg-card rounded-xl p-6 border border-border-default shadow-card">
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide mb-4 flex items-center gap-2">
+              <div className="w-1 h-4 bg-brand rounded-full"></div>
               Informations de base
             </h3>
             
@@ -779,13 +782,13 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-text-primary mb-2">
                   Catégorie *
                 </label>
                 <div className="flex items-center gap-2">
                   <select
                     {...register('categoryId')}
-                    className="flex-1 px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 transition-all text-sm font-medium"
+                    className="flex-1 px-4 py-2.5 border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-brand border-border-default transition-all text-sm font-medium text-text-primary"
                   >
                     <option value="">Sélectionner une catégorie</option>
                     {categories.map((cat) => (
@@ -808,7 +811,7 @@ export default function ProductsPage() {
                   )}
                 </div>
                 {errors.categoryId && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.categoryId.message}</p>
+                  <p className="mt-1 text-sm text-danger">{errors.categoryId.message}</p>
                 )}
               </div>
               {!useVariants && (
@@ -829,13 +832,21 @@ export default function ProductsPage() {
                 placeholder="Description optionnelle du produit..."
               />
             </div>
+
+            <div className="mt-4">
+              <Select
+                label="Unité de vente"
+                {...register('unit')}
+                options={PRODUCT_UNITS}
+              />
+            </div>
           </div>
 
           {/* Section Prix et Stock (Mode Simple) */}
           {!useVariants && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <div className="w-1 h-4 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
+            <div className="bg-card rounded-xl p-6 border border-border-default shadow-card">
+              <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide mb-4 flex items-center gap-2">
+                <div className="w-1 h-4 bg-success rounded-full"></div>
                 Prix et Stock
               </h3>
               
@@ -859,14 +870,14 @@ export default function ProductsPage() {
               </div>
 
               {purchasePrice > 0 && salePrice > 0 && (
-                <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="mt-4 p-4 bg-success/10 rounded-lg border border-border-default">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Marge brute</span>
+                    <span className="text-sm font-semibold text-text-primary">Marge brute</span>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {margin.toFixed(2)} €
+                      <div className="text-lg font-bold text-success">
+                        {margin.toFixed(2)} {currencyLabel}
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <div className="text-xs text-text-secondary">
                         {marginPercent}% de marge
                       </div>
                     </div>
@@ -895,17 +906,17 @@ export default function ProductsPage() {
 
           {/* Section Variantes */}
           {useVariants && !editingProduct && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="bg-card rounded-xl p-6 border border-border-default shadow-card">
               {variants.length > 0 && (
-                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="mb-4 p-3 bg-info/10 rounded-lg border border-border-default">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                      <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                      <div className="w-2 h-2 rounded-full bg-info animate-pulse"></div>
+                      <span className="text-sm font-semibold text-info">
                         {variants.length} variante{variants.length > 1 ? 's' : ''} en cours
                       </span>
                     </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400">
+                    <div className="text-xs text-info">
                       {variants.filter(v => 
                         v.attributes.every(attr => attr.value.trim() !== '') &&
                         v.purchasePrice && v.salePrice
@@ -956,18 +967,18 @@ export default function ProductsPage() {
       >
         <form onSubmit={handleSubmitDamage(onSubmitDamage)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-1">
               Type d'avarie *
             </label>
             <select
               {...registerDamage('type')}
-              className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
+              className="w-full px-3 py-2 border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
             >
               <option value={StockMovementType.DAMAGE}>Casse</option>
               <option value={StockMovementType.LOSS}>Perte</option>
             </select>
             {damageErrors.type && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{damageErrors.type.message}</p>
+              <p className="mt-1 text-sm text-danger">{damageErrors.type.message}</p>
             )}
           </div>
 
@@ -978,12 +989,12 @@ export default function ProductsPage() {
               {...registerDamage('quantity', { valueAsNumber: true })}
               error={damageErrors.quantity?.message}
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-text-muted">
               Quantité négative pour retirer du stock, positive pour ajouter
             </p>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+          <div className="bg-info/10 p-3 rounded-lg">
             <p className="text-sm">
               <strong>Stock actuel:</strong> {selectedProductForDamage?.stockCurrent || 0}
             </p>
@@ -996,17 +1007,17 @@ export default function ProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-1">
               Justification *
             </label>
             <textarea
               {...registerDamage('reason')}
-              className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
+              className="w-full px-3 py-2 border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
               rows={4}
               placeholder="Ex: Produit cassé lors du transport, produit détruit par erreur..."
             />
             {damageErrors.reason && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{damageErrors.reason.message}</p>
+              <p className="mt-1 text-sm text-danger">{damageErrors.reason.message}</p>
             )}
           </div>
         </form>
@@ -1083,7 +1094,7 @@ export default function ProductsPage() {
               {historyLoading ? (
                 <div className="text-center py-8">Chargement...</div>
               ) : damageMovements.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">Aucune avarie trouvée</div>
+                <div className="text-center py-8 text-text-muted">Aucune avarie trouvée</div>
               ) : (
                 <>
                   <Table>
@@ -1104,15 +1115,15 @@ export default function ProductsPage() {
                           <TableCell className="font-medium">
                             {movement.product?.name || '-'}
                             {movement.product?.sku && (
-                              <div className="text-xs text-gray-500">SKU: {movement.product.sku}</div>
+                              <div className="text-xs text-text-muted">SKU: {movement.product.sku}</div>
                             )}
                           </TableCell>
                           <TableCell>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 movement.type === StockMovementType.DAMAGE
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                  : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                  ? 'bg-danger/20 text-danger'
+                                  : 'bg-warning/20 text-warning'
                               }`}
                             >
                               {getDamageTypeLabel(movement.type)}
@@ -1122,8 +1133,8 @@ export default function ProductsPage() {
                             <span
                               className={
                                 movement.quantity < 0
-                                  ? 'text-red-600 font-semibold'
-                                  : 'text-green-600 font-semibold'
+                                  ? 'text-danger font-semibold'
+                                  : 'text-success font-semibold'
                               }
                             >
                               {movement.quantity > 0 ? '+' : ''}
@@ -1154,7 +1165,7 @@ export default function ProductsPage() {
                       >
                         Précédent
                       </Button>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-text-secondary">
                         Page {historyPage} sur {historyTotalPages}
                       </span>
                       <Button
@@ -1216,12 +1227,12 @@ export default function ProductsPage() {
             placeholder="Description optionnelle de la catégorie"
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-1">
               Catégorie parent (optionnel)
             </label>
             <select
               {...registerCategory('parentId')}
-              className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
+              className="w-full px-3 py-2 border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
             >
               <option value="">Aucune (catégorie principale)</option>
               {categories.map((cat) => (
@@ -1231,7 +1242,7 @@ export default function ProductsPage() {
               ))}
             </select>
             {categoryErrors.parentId && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              <p className="mt-1 text-sm text-danger">
                 {categoryErrors.parentId.message}
               </p>
             )}

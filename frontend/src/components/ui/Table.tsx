@@ -8,7 +8,14 @@ interface TableProps {
 
 export function Table({ children, className }: TableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-hidden overflow-x-auto"
+      style={{
+        background: '#1E1E28',
+        border: '1px solid #2A2A38',
+        borderRadius: 10,
+      }}
+    >
       <table className={cn('w-full border-collapse', className)}>
         {children}
       </table>
@@ -18,7 +25,13 @@ export function Table({ children, className }: TableProps) {
 
 export function TableHeader({ children, className }: TableProps) {
   return (
-    <thead className={cn('bg-gray-50 dark:bg-gray-900', className)}>
+    <thead
+      className={cn(className)}
+      style={{
+        background: '#252532',
+        borderBottom: '1px solid #2A2A38',
+      }}
+    >
       {children}
     </thead>
   );
@@ -30,7 +43,16 @@ export function TableBody({ children, className }: TableProps) {
 
 export function TableRow({ children, className }: TableProps) {
   return (
-    <tr className={cn('border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700', className)}>
+    <tr
+      className={cn(
+        'transition-colors duration-150 cursor-pointer hover:bg-[rgba(255,255,255,0.025)]',
+        className
+      )}
+      style={{
+        height: 40,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
       {children}
     </tr>
   );
@@ -38,7 +60,14 @@ export function TableRow({ children, className }: TableProps) {
 
 export function TableHead({ children, className }: TableProps) {
   return (
-    <th className={cn('px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider', className)}>
+    <th
+      className={cn('text-left font-semibold uppercase tracking-[0.06em]', className)}
+      style={{
+        padding: '7px 14px',
+        fontSize: 11,
+        color: '#5C5C75',
+      }}
+    >
       {children}
     </th>
   );
@@ -46,9 +75,13 @@ export function TableHead({ children, className }: TableProps) {
 
 export function TableCell({ children, className }: TableProps) {
   return (
-    <td className={cn('px-4 py-3 text-sm text-gray-900 dark:text-gray-100', className)}>
+    <td
+      className={cn('text-[13px] text-text-secondary', className)}
+      style={{
+        padding: '9px 14px',
+      }}
+    >
       {children}
     </td>
   );
 }
-

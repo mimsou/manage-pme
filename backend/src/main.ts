@@ -1,11 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { AppModule } from './app.module';
 import { DecimalToNumberInterceptor } from './common/interceptors/decimal-to-number.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Enable CORS
   app.enableCors({
@@ -37,6 +40,16 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+
+  // En production (Docker) : servir le frontend buildé depuis /app/client
+  const clientPath = join(process.cwd(), 'client');
+  if (existsSync(clientPath)) {
+    app.useStaticAssets(clientPath, { index: false });
+    // SPA fallback : toute requête GET non-API renvoie index.html
+    app.getHttpAdapter().get('*', (req, res) => {
+      res.sendFile(join(clientPath, 'index.html'));
+    });
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

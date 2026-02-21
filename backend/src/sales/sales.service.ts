@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/sale.dto';
+import { CreateRefundDto } from './dto/create-refund.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 import { SaleType, PaymentMethod, SaleStatus } from '@prisma/client';
+import { StockMovementType } from '@prisma/client';
 
 @Injectable()
 export class SalesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+  ) {}
 
   async create(data: CreateSaleDto, userId: string) {
     // Vérifier que tous les produits existent et ont du stock
@@ -70,6 +74,10 @@ export class SalesService {
       ? `INV-${Date.now()}`
       : null;
 
+    const company = await this.prisma.company.findFirst();
+    const defaultCurrency = company?.defaultCurrencyCode ?? 'TND';
+    const currencyCode = data.currencyCode?.trim() || defaultCurrency;
+
     // Créer la vente
     const sale = await this.prisma.sale.create({
       data: {
@@ -88,6 +96,7 @@ export class SalesService {
         cashAmount: data.cashAmount ? new Decimal(data.cashAmount) : null,
         cardAmount: data.cardAmount ? new Decimal(data.cardAmount) : null,
         margin: totalMargin,
+        currencyCode,
         items: {
           create: saleItems,
         },
@@ -289,6 +298,150 @@ export class SalesService {
         },
         refunds: true,
         cashRegister: true,
+      },
+    });
+  }
+
+  /** Créer un avoir (note de crédit) sur une vente — conforme aux usages tunisiens */
+  async createRefund(saleId: string, dto: CreateRefundDto, userId: string) {
+    const sale = await this.prisma.sale.findUnique({
+      where: { id: saleId },
+      include: {
+        client: true,
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        items: { include: { product: true } },
+        refunds: true,
+      },
+    });
+
+    if (!sale) throw new NotFoundException('Vente non trouvée');
+    if (sale.status === SaleStatus.CANCELLED) {
+      throw new BadRequestException('Impossible de créer un avoir sur une vente annulée.');
+    }
+
+    // Quantités déjà remboursées par ligne (avoir précédents)
+    const refundedByItemId: Record<string, number> = {};
+    for (const ref of sale.refunds) {
+      const items = (ref.refundedItems as Array<{ saleItemId: string; quantity: number }>) || [];
+      for (const it of items) {
+        refundedByItemId[it.saleItemId] = (refundedByItemId[it.saleItemId] || 0) + it.quantity;
+      }
+    }
+
+    const saleItemMap = new Map(sale.items.map((i) => [i.id, i]));
+    let totalRefundAmount = new Decimal(0);
+    const refundedItemsPayload: Array<{
+      saleItemId: string;
+      productId: string;
+      productName: string;
+      quantity: number;
+      unitPrice: Decimal;
+      totalPrice: Decimal;
+      taxAmount?: number;
+    }> = [];
+
+    for (const req of dto.items) {
+      const saleItem = saleItemMap.get(req.saleItemId);
+      if (!saleItem) {
+        throw new BadRequestException(`Ligne de vente invalide: ${req.saleItemId}`);
+      }
+      const alreadyRefunded = refundedByItemId[req.saleItemId] || 0;
+      const maxQty = saleItem.quantity - alreadyRefunded;
+      if (maxQty <= 0) {
+        throw new BadRequestException(
+          `Quantité déjà remboursée pour le produit "${saleItem.product?.name}".`,
+        );
+      }
+      if (req.quantity > maxQty) {
+        throw new BadRequestException(
+          `Quantité avoir (${req.quantity}) supérieure au restant remboursable (${maxQty}) pour "${saleItem.product?.name}".`,
+        );
+      }
+
+      const unitPrice = saleItem.unitPrice;
+      const totalPrice = unitPrice.mul(req.quantity).sub(saleItem.discount.mul(req.quantity).div(saleItem.quantity));
+      totalRefundAmount = totalRefundAmount.add(totalPrice);
+
+      refundedItemsPayload.push({
+        saleItemId: saleItem.id,
+        productId: saleItem.productId,
+        productName: saleItem.product?.name || 'Produit',
+        quantity: req.quantity,
+        unitPrice,
+        totalPrice,
+      });
+    }
+
+    if (refundedItemsPayload.length === 0) {
+      throw new BadRequestException('Aucune ligne à rembourser.');
+    }
+
+    // TVA proportionnelle si facture (20 %)
+    const taxRate = sale.type === SaleType.INVOICE ? 0.2 : 0;
+    const subtotalRefund = totalRefundAmount;
+    const taxRefund = subtotalRefund.mul(taxRate);
+    const totalWithTax = subtotalRefund.add(taxRefund);
+
+    // Numéro d'avoir unique (norme tunisienne : référence unique)
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await this.prisma.saleRefund.count({
+      where: { avoirNumber: { startsWith: `AV-${today}` } },
+    });
+    const avoirNumber = `AV-${today}-${String(count + 1).padStart(3, '0')}`;
+
+    // Créer l'avoir
+    const refund = await this.prisma.saleRefund.create({
+      data: {
+        saleId,
+        avoirNumber,
+        reason: dto.reason || null,
+        refundAmount: totalWithTax,
+        refundedItems: refundedItemsPayload as any,
+        userId,
+      },
+    });
+
+    // Restaurer le stock et créer les mouvements (traçabilité)
+    for (const it of refundedItemsPayload) {
+      await this.prisma.product.update({
+        where: { id: it.productId },
+        data: { stockCurrent: { increment: it.quantity } },
+      });
+      await this.prisma.stockMovement.create({
+        data: {
+          productId: it.productId,
+          type: StockMovementType.REFUND,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          totalValue: it.totalPrice,
+          reference: avoirNumber,
+          referenceId: refund.id,
+          userId,
+          reason: `Avoir ${avoirNumber} - Référence: ${sale.invoiceNumber || sale.ticketNumber || sale.id}`,
+        },
+      });
+    }
+
+    // Si la vente est intégralement remboursée, passer en REFUNDED
+    const totalAlreadyRefunded = sale.refunds.reduce((s, r) => s + Number(r.refundAmount), 0);
+    const newTotalRefunded = totalAlreadyRefunded + Number(totalWithTax);
+    if (Math.abs(newTotalRefunded - Number(sale.total)) < 0.02) {
+      await this.prisma.sale.update({
+        where: { id: saleId },
+        data: { status: SaleStatus.REFUNDED },
+      });
+    }
+
+    return this.prisma.saleRefund.findUnique({
+      where: { id: refund.id },
+      include: {
+        sale: {
+          include: {
+            client: true,
+            user: { select: { id: true, firstName: true, lastName: true, email: true } },
+            items: { include: { product: true } },
+          },
+        },
       },
     });
   }

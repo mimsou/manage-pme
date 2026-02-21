@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Sale, CreateSaleDto } from '@/types/sale';
+import { Sale, CreateSaleDto, CreateRefundDto, SaleRefund } from '@/types/sale';
 
 export const salesApi = {
   getAll: async (params?: {
@@ -27,6 +27,11 @@ export const salesApi = {
 
   cancel: async (id: string): Promise<Sale> => {
     const response = await apiClient.put(`/sales/${id}/cancel`);
+    return response.data;
+  },
+
+  createRefund: async (saleId: string, data: CreateRefundDto): Promise<SaleRefund> => {
+    const response = await apiClient.post(`/sales/${saleId}/refund`, data);
     return response.data;
   },
 };

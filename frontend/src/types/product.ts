@@ -8,6 +8,7 @@ export interface Product {
   category?: Category;
   purchasePrice: number;
   salePrice: number;
+  unit?: string | null;
   stockMin: number;
   stockCurrent: number;
   hasVariants: boolean;
@@ -35,6 +36,7 @@ export interface CreateProductDto {
   categoryId: string;
   purchasePrice: number;
   salePrice: number;
+  unit?: string;
   stockMin?: number;
   stockCurrent?: number;
   hasVariants?: boolean;
@@ -46,6 +48,7 @@ export interface UpdateProductDto {
   categoryId?: string;
   purchasePrice?: number;
   salePrice?: number;
+  unit?: string;
   stockMin?: number;
   isActive?: boolean;
   priceChangeReason?: string;

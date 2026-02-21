@@ -3,6 +3,7 @@ import { Plus, Trash2, Copy, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { productsApi } from '@/api/products';
+import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 
 interface VariantAttribute {
   type: string;
@@ -39,6 +40,7 @@ export function VariantBuilder({
   const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
   const [focusedVariant, setFocusedVariant] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const { currencyLabel } = useDefaultCurrency();
 
   // Charger les suggestions depuis l'API
   useEffect(() => {
@@ -216,12 +218,12 @@ export function VariantBuilder({
   return (
     <div className="space-y-4">
       {/* En-tête avec actions rapides */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+      <div className="flex items-center justify-between bg-brand/10 p-4 rounded-lg border border-border-default">
         <div className="flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <Sparkles className="w-5 h-5 text-brand" />
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Variantes du produit</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
+            <h3 className="text-lg font-bold text-text-primary">Variantes du produit</h3>
+            <p className="text-xs text-text-secondary">
               {variants.length} variante{variants.length !== 1 ? 's' : ''} • 
               {variants.filter(isVariantComplete).length} complète{variants.filter(isVariantComplete).length !== 1 ? 's' : ''}
             </p>
@@ -240,9 +242,9 @@ export function VariantBuilder({
           </Button>
           <Button 
             type="button" 
-            variant="default" 
+            variant="primary" 
             onClick={addVariant}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="bg-brand hover:bg-brand-dark text-text-primary transition-colors duration-default ease-default"
           >
             <Plus className="w-4 h-4 mr-2" />
             Ajouter variante
@@ -251,18 +253,18 @@ export function VariantBuilder({
       </div>
 
       {variants.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+        <div className="text-center py-12 border-2 border-dashed border-border-default rounded-xl bg-surface">
           <div className="max-w-sm mx-auto">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Plus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand/20 flex items-center justify-center">
+              <Plus className="w-8 h-8 text-brand" />
             </div>
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <h4 className="text-lg font-semibold text-text-primary mb-2">
               Aucune variante
             </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-sm text-text-secondary mb-4">
               Commencez par ajouter votre première variante. Utilisez Tab/Enter pour naviguer rapidement.
             </p>
-            <Button onClick={addVariant} variant="default">
+            <Button onClick={addVariant} variant="primary">
               <Plus className="w-4 h-4 mr-2" />
               Ajouter la première variante
             </Button>
@@ -284,10 +286,10 @@ export function VariantBuilder({
                 key={variant.id}
                 className={`relative border-2 rounded-xl p-5 transition-all duration-200 group ${
                   isComplete
-                    ? 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/10'
+                    ? 'border-success/50 bg-success/10'
                     : focusedVariant === variant.id
-                    ? 'border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 shadow-lg'
-                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'border-brand bg-brand/10 shadow-glow-primary'
+                    : 'border-border-default bg-card hover:border-border-subtle'
                 }`}
                 onFocus={() => setFocusedVariant(variant.id)}
                 onBlur={() => setFocusedVariant(null)}
@@ -295,7 +297,7 @@ export function VariantBuilder({
                 {/* Badge de statut */}
                 {isComplete && (
                   <div className="absolute top-3 right-3">
-                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-success/20 text-success rounded-full text-xs font-medium">
                       <CheckCircle2 className="w-3 h-3" />
                       Complète
                     </div>
@@ -327,7 +329,7 @@ export function VariantBuilder({
 
                 {/* Numéro de variante */}
                 <div className="mb-4">
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold text-sm">
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand/20 text-brand font-bold text-sm">
                     {index + 1}
                   </span>
                 </div>
@@ -336,7 +338,7 @@ export function VariantBuilder({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                   {variant.attributes.map((attr, attrIndex) => (
                     <div key={attrIndex} className="relative">
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 uppercase tracking-wide">
+                      <label className="block text-xs font-semibold text-text-primary mb-1 uppercase tracking-wide">
                         {attr.type}
                       </label>
                       <input
@@ -349,7 +351,7 @@ export function VariantBuilder({
                         onKeyDown={(e) => handleKeyDown(e, variant.id, attrIndex, 'attr')}
                         placeholder={attr.type === 'color' ? 'NOIR' : attr.type === 'size' ? 'M' : 'Valeur'}
                         list={`suggestions-${attr.type}-${variant.id}`}
-                        className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600 transition-all"
+                        className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default transition-all duration-default ease-default"
                       />
                       <datalist id={`suggestions-${attr.type}-${variant.id}`}>
                         {suggestions[attr.type]?.map((suggestion, i) => (
@@ -362,10 +364,10 @@ export function VariantBuilder({
 
                 {/* SKU généré */}
                 {variant.generatedSku && (
-                  <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <div className="mb-4 p-2 bg-elevated rounded-lg">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">SKU généré:</span>
-                      <span className="text-sm font-mono font-bold text-blue-600 dark:text-blue-400">
+                      <span className="text-xs font-medium text-text-secondary">SKU généré:</span>
+                      <span className="text-sm font-mono font-bold text-brand">
                         {variant.generatedSku}
                       </span>
                     </div>
@@ -375,7 +377,7 @@ export function VariantBuilder({
                 {/* Prix et stock en grille compacte */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
                       Prix achat *
                     </label>
                     <input
@@ -393,11 +395,11 @@ export function VariantBuilder({
                       }
                       onKeyDown={(e) => handleKeyDown(e, variant.id, 0, 'price')}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
                       Prix vente *
                     </label>
                     <input
@@ -415,21 +417,21 @@ export function VariantBuilder({
                       }
                       onKeyDown={(e) => handleKeyDown(e, variant.id, 1, 'price')}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
                     />
                   </div>
                   {variant.purchasePrice && variant.salePrice && (
                     <div className="flex items-end">
-                      <div className="w-full p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Marge</div>
-                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                          {margin.toFixed(2)} € ({marginPercent}%)
+                      <div className="w-full p-2 bg-info/10 rounded-lg">
+                        <div className="text-xs text-text-secondary">Marge</div>
+                        <div className="text-sm font-bold text-info">
+                          {margin.toFixed(2)} {currencyLabel} ({marginPercent}%)
                         </div>
                       </div>
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
                       Stock actuel
                     </label>
                     <input
@@ -445,7 +447,7 @@ export function VariantBuilder({
                       }
                       onKeyDown={(e) => handleKeyDown(e, variant.id, 0, 'stock')}
                       placeholder="0"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
                     />
                   </div>
                 </div>
@@ -453,7 +455,7 @@ export function VariantBuilder({
                 {/* Stock minimum et code-barres */}
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
                       Stock minimum
                     </label>
                     <input
@@ -469,11 +471,11 @@ export function VariantBuilder({
                       }
                       onKeyDown={(e) => handleKeyDown(e, variant.id, 1, 'stock')}
                       placeholder="0"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
                       Code-barres
                     </label>
                     <input
@@ -485,7 +487,7 @@ export function VariantBuilder({
                         })
                       }
                       placeholder="Optionnel"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
                     />
                   </div>
                 </div>
@@ -497,19 +499,19 @@ export function VariantBuilder({
 
       {/* Raccourcis clavier et statistiques */}
       {variants.length > 0 && (
-        <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="mt-4 p-4 bg-surface rounded-lg border border-border-default">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-4 text-xs text-text-secondary">
               <div className="flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                <CheckCircle2 className="w-3 h-3 text-success" />
                 <span>{variants.filter(isVariantComplete).length} complète{variants.filter(isVariantComplete).length !== 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                <span className="w-2 h-2 rounded-full bg-warning"></span>
                 <span>{variants.length - variants.filter(isVariantComplete).length} en cours</span>
               </div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-500">
+            <div className="text-xs text-text-muted">
               <strong>Raccourcis:</strong> Tab/Enter pour naviguer • Cliquez sur <Copy className="w-3 h-3 inline" /> pour dupliquer
             </div>
           </div>

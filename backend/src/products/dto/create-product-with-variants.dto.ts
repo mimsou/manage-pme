@@ -67,6 +67,11 @@ export class CreateProductWithVariantsDto {
   @IsString()
   categoryId: string;
 
+  @ApiProperty({ required: false, description: 'Unité de vente (ex: pièce, kg, m, L)' })
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
   @ApiProperty({ type: [CreateVariantDto] })
   @IsArray()
   @ValidateNested({ each: true })

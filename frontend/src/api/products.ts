@@ -41,6 +41,7 @@ export const productsApi = {
     name: string;
     description?: string;
     categoryId: string;
+    unit?: string;
     variants: Array<{
       attributes: Array<{ type: string; value: string }>;
       purchasePrice: number;

@@ -37,14 +37,14 @@ export function Modal({
   if (size === 'fullscreen') {
     return (
       <div
-        className="fixed inset-0 z-[100] bg-white dark:bg-gray-800 flex flex-col"
+        className="fixed inset-0 z-[100] bg-card flex flex-col"
       >
         {title && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold">{title}</h2>
+          <div className="flex items-center justify-between p-6 border-b border-border-default">
+            <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="text-text-muted hover:text-text-primary transition-colors duration-default ease-default"
             >
               <X className="w-5 h-5" />
             </button>
@@ -52,7 +52,7 @@ export function Modal({
         )}
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-end gap-2 p-6 border-t border-border-default">
             {footer}
           </div>
         )}
@@ -70,21 +70,22 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
     >
       <div
         className={cn(
-          'bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full mx-4',
+          'glass w-full mx-4 rounded-[20px] border border-[rgba(255,255,255,0.08)] flex flex-col',
           sizes[size],
-          'max-h-[90vh] flex flex-col'
+          'max-h-[90vh] bg-elevated'
         )}
+        style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)' }}
       >
         {title && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold">{title}</h2>
+          <div className="flex items-center justify-between p-6 border-b border-border-default">
+            <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="text-text-muted hover:text-text-primary transition-colors duration-default ease-default"
             >
               <X className="w-5 h-5" />
             </button>
@@ -92,7 +93,7 @@ export function Modal({
         )}
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-end gap-2 p-6 border-t border-border-default">
             {footer}
           </div>
         )}

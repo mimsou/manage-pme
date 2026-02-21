@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { Eye, X, Filter, Receipt, FileText, Printer } from 'lucide-react';
+import { Eye, X, Filter, Receipt, FileText, Printer, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { salesApi } from '@/api/sales';
 import { clientsApi } from '@/api/clients';
 import { Sale, SaleType, SaleStatus, PaymentMethod } from '@/types/sale';
 import { Client } from '@/types/client';
 import { useAuthStore } from '@/stores/authStore';
-import { generateInvoice, generateTicket, type CompanyInfo } from '@/utils/pdf';
+import { generateInvoice, generateTicket, generateAvoir, type CompanyInfo } from '@/utils/pdf';
 import { apiClient } from '@/api/client';
+import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 
 export function SalesContent() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -22,6 +22,10 @@ export function SalesContent() {
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isAvoirModalOpen, setIsAvoirModalOpen] = useState(false);
+  const [avoirQuantities, setAvoirQuantities] = useState<Record<string, number>>({});
+  const [avoirReason, setAvoirReason] = useState('');
+  const [avoirSubmitting, setAvoirSubmitting] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -37,6 +41,7 @@ export function SalesContent() {
   const [company, setCompany] = useState<CompanyInfo | null>(null);
 
   const { user } = useAuthStore();
+  const { currencyLabel, toDefault } = useDefaultCurrency();
 
   useEffect(() => {
     loadSales();
@@ -120,14 +125,14 @@ export function SalesContent() {
     return labels[method] || method;
   };
 
-  const getStatusBadge = (status: SaleStatus) => {
-    const badges = {
-      [SaleStatus.PENDING]: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      [SaleStatus.COMPLETED]: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      [SaleStatus.CANCELLED]: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      [SaleStatus.REFUNDED]: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+  const getStatusBadgeStyle = (status: SaleStatus): React.CSSProperties => {
+    const styles: Record<SaleStatus, React.CSSProperties> = {
+      [SaleStatus.PENDING]: { background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' },
+      [SaleStatus.COMPLETED]: { background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' },
+      [SaleStatus.CANCELLED]: { background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' },
+      [SaleStatus.REFUNDED]: { background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-secondary)', border: '1px solid #2A2A38' },
     };
-    return badges[status] || 'bg-gray-100 text-gray-800';
+    return { height: 20, padding: '0 8px', borderRadius: 9999, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', ...(styles[status] || {}) };
   };
 
   const getStatusLabel = (status: SaleStatus) => {
@@ -177,67 +182,100 @@ export function SalesContent() {
     }
   };
 
+  const openAvoirModal = () => {
+    if (!selectedSale) return;
+    const qty: Record<string, number> = {};
+    selectedSale.items.forEach((item) => {
+      qty[item.id] = item.quantity;
+    });
+    setAvoirQuantities(qty);
+    setAvoirReason('');
+    setIsAvoirModalOpen(true);
+  };
+
+  const handleCreateAvoir = async () => {
+    if (!selectedSale) return;
+    const items = Object.entries(avoirQuantities)
+      .filter(([, q]) => q > 0)
+      .map(([saleItemId, quantity]) => ({ saleItemId, quantity }));
+    if (items.length === 0) {
+      toast.error('Indiquez au moins une quantité à rembourser.');
+      return;
+    }
+    setAvoirSubmitting(true);
+    try {
+      const refund = await salesApi.createRefund(selectedSale.id, {
+        items,
+        reason: avoirReason || undefined,
+      });
+      const saleWithRefund = await salesApi.getById(selectedSale.id);
+      await generateAvoir(refund, saleWithRefund, company);
+      toast.success('Avoir créé. Le stock a été mis à jour. Document imprimé.');
+      setIsAvoirModalOpen(false);
+      setSelectedSale(saleWithRefund);
+      loadSales();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la création de l\'avoir.');
+    } finally {
+      setAvoirSubmitting(false);
+    }
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Ventes</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsFilterModalOpen(true)}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filtres
-            {hasActiveFilters && (
-              <span className="ml-2 bg-primary-600 text-white rounded-full px-2 py-0.5 text-xs">
-                Actifs
-              </span>
-            )}
-          </Button>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+        <h1 className="page-title">Ventes</h1>
+        <Button variant="outline" className="btn" onClick={() => setIsFilterModalOpen(true)}>
+          <Filter className="w-3.5 h-3.5 mr-1.5" />
+          Filtres
+          {hasActiveFilters && (
+            <span className="ml-1.5 bg-brand text-white rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase">Actifs</span>
+          )}
+        </Button>
+      </div>
+
+      <div
+        className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
+        style={{ gap: 12 }}
+      >
+        <div className="rounded-[10px] border p-3" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <div className="text-[11px] uppercase tracking-[0.05em] text-text-muted">Total ventes</div>
+          <div className="text-[24px] font-bold font-mono text-text-primary mt-0.5">{total}</div>
+        </div>
+        <div className="rounded-[10px] border p-3" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <div className="text-[11px] uppercase tracking-[0.05em] text-text-muted">CA Total</div>
+          <div className="text-[24px] font-bold font-mono text-text-primary mt-0.5">
+            {sales.reduce((sum, sale) => sum + toDefault(Number(sale.total), sale.currencyCode), 0).toFixed(2)} {currencyLabel}
+          </div>
+        </div>
+        <div className="rounded-[10px] border p-3" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <div className="text-[11px] uppercase tracking-[0.05em] text-text-muted">Marge Totale</div>
+          <div className="text-[24px] font-bold font-mono text-text-primary mt-0.5">
+            {sales.reduce((sum, sale) => sum + toDefault(sale.margin || 0, sale.currencyCode), 0).toFixed(2)} {currencyLabel}
+          </div>
+        </div>
+        <div className="rounded-[10px] border p-3" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <div className="text-[11px] uppercase tracking-[0.05em] text-text-muted">Panier moyen</div>
+          <div className="text-[24px] font-bold font-mono text-text-primary mt-0.5">
+            {sales.length > 0
+              ? (sales.reduce((sum, sale) => sum + toDefault(Number(sale.total), sale.currencyCode), 0) / sales.length).toFixed(2)
+              : '0.00'}{' '}
+            {currencyLabel}
+          </div>
         </div>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Total ventes</div>
-              <div className="text-2xl font-bold">{total}</div>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <div className="text-sm text-gray-600 dark:text-gray-400">CA Total</div>
-              <div className="text-2xl font-bold">
-                {sales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)} €
-              </div>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Marge Totale</div>
-              <div className="text-2xl font-bold">
-                {sales.reduce((sum, sale) => sum + (sale.margin || 0), 0).toFixed(2)} €
-              </div>
-            </div>
-            <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Panier moyen</div>
-              <div className="text-2xl font-bold">
-                {sales.length > 0
-                  ? (sales.reduce((sum, sale) => sum + sale.total, 0) / sales.length).toFixed(2)
-                  : '0.00'}{' '}
-                €
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="text-center py-8">Chargement...</div>
-          ) : sales.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Aucune vente trouvée</div>
-          ) : (
-            <>
-              <Table>
+      {loading ? (
+        <div className="text-center py-8 text-[13px] text-text-secondary">Chargement...</div>
+      ) : sales.length === 0 ? (
+        <div className="rounded-[10px] border flex flex-col items-center justify-center py-12" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <Receipt className="w-9 h-9 mb-2" style={{ color: 'rgba(99,102,241,0.3)' }} />
+          <p className="text-[12px] font-medium text-text-muted">Aucune vente trouvée</p>
+          <p className="text-[11px] text-text-muted mt-0.5">Ajustez les filtres ou enregistrez une vente au POS</p>
+        </div>
+      ) : (
+        <>
+          <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
@@ -283,51 +321,43 @@ export function SalesContent() {
                           ? `${sale.user.firstName} ${sale.user.lastName}`
                           : '-'}
                       </TableCell>
-                      <TableCell className="font-semibold">
-                        {sale.total.toFixed(2)} €
-                      </TableCell>
-                      <TableCell>
-                        <span className={sale.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {sale.margin?.toFixed(2) || '0.00'} €
-                        </span>
+                      <TableCell className="font-mono text-text-primary text-right">{toDefault(Number(sale.total), sale.currencyCode).toFixed(2)} {currencyLabel}</TableCell>
+                      <TableCell className={`font-mono text-right ${(sale.margin ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {toDefault(sale.margin || 0, sale.currencyCode).toFixed(2)} {currencyLabel}
                       </TableCell>
                       <TableCell>{getPaymentMethodLabel(sale.paymentMethod)}</TableCell>
                       <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                            sale.status
-                          )}`}
-                        >
+                        <span className="inline-flex items-center rounded-full font-semibold uppercase tracking-[0.04em]" style={getStatusBadgeStyle(sale.status)}>
                           {getStatusLabel(sale.status)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                             onClick={() => handleViewDetails(sale.id)}
                             title="Voir les détails"
                           >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
+                            <Eye className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                             onClick={() => handlePrint(sale)}
                             title={`Imprimer ${sale.type === SaleType.INVOICE ? 'Facture' : 'Ticket'}`}
                           >
-                            <Printer className="w-4 h-4" />
-                          </Button>
+                            <Printer className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                          </button>
                           {sale.status === SaleStatus.COMPLETED && (
-                            <Button
-                              variant="danger"
-                              size="sm"
+                            <button
+                              type="button"
+                              className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                               onClick={() => handleCancel(sale.id)}
                               title="Annuler la vente"
                             >
-                              <X className="w-4 h-4" />
-                            </Button>
+                              <X className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                            </button>
                           )}
                         </div>
                       </TableCell>
@@ -336,31 +366,15 @@ export function SalesContent() {
                 </TableBody>
               </Table>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Précédent
-                  </Button>
-                  <span className="text-sm text-gray-600">
-                    Page {page} sur {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Suivant
-                  </Button>
-                </div>
-              )}
-            </>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <Button variant="outline" className="btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Précédent</Button>
+              <span className="text-[13px] text-text-secondary">Page {page} sur {totalPages}</span>
+              <Button variant="outline" className="btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Suivant</Button>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       {/* Modal Filtres */}
       <Modal
@@ -449,12 +463,18 @@ export function SalesContent() {
               </Button>
             )}
             {selectedSale?.status === SaleStatus.COMPLETED && (
-              <Button
-                variant="danger"
-                onClick={() => selectedSale && handleCancel(selectedSale.id)}
-              >
-                Annuler la vente
-              </Button>
+              <>
+                <Button variant="outline" onClick={openAvoirModal}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Créer un avoir
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => selectedSale && handleCancel(selectedSale.id)}
+                >
+                  Annuler la vente
+                </Button>
+              </>
             )}
           </>
         }
@@ -464,31 +484,30 @@ export function SalesContent() {
             {/* Informations générales */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">Date</label>
+                <label className="text-sm font-medium text-text-muted">Date</label>
                 <p className="text-sm">
                   {formatDate(selectedSale.createdAt)}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Type</label>
+                <label className="text-sm font-medium text-text-muted">Type</label>
                 <p className="text-sm">
                   {selectedSale.type === SaleType.TICKET ? 'Ticket (B2C)' : 'Facture (B2B)'}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Statut</label>
+                <label className="text-sm font-medium text-text-muted">Statut</label>
                 <p className="text-sm">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                      selectedSale.status
-                    )}`}
+                    className="inline-flex items-center rounded-full font-semibold uppercase tracking-[0.04em]"
+                    style={getStatusBadgeStyle(selectedSale.status)}
                   >
                     {getStatusLabel(selectedSale.status)}
                   </span>
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Paiement</label>
+                <label className="text-sm font-medium text-text-muted">Paiement</label>
                 <p className="text-sm">{getPaymentMethodLabel(selectedSale.paymentMethod)}</p>
               </div>
             </div>
@@ -496,7 +515,7 @@ export function SalesContent() {
             {/* Client */}
             {selectedSale.client && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Client</label>
+                <label className="text-sm font-medium text-text-muted">Client</label>
                 <p className="text-sm">
                   {selectedSale.client.companyName ||
                     `${selectedSale.client.firstName || ''} ${selectedSale.client.lastName || ''}`.trim() ||
@@ -504,7 +523,7 @@ export function SalesContent() {
                     'Client sans nom'}
                 </p>
                 {selectedSale.client.phone && (
-                  <p className="text-xs text-gray-500">Tél: {selectedSale.client.phone}</p>
+                  <p className="text-xs text-text-muted">Tél: {selectedSale.client.phone}</p>
                 )}
               </div>
             )}
@@ -512,7 +531,7 @@ export function SalesContent() {
             {/* Vendeur */}
             {selectedSale.user && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Vendeur</label>
+                <label className="text-sm font-medium text-text-muted">Vendeur</label>
                 <p className="text-sm">
                   {selectedSale.user.firstName} {selectedSale.user.lastName}
                 </p>
@@ -521,22 +540,22 @@ export function SalesContent() {
 
             {/* Articles */}
             <div>
-              <label className="text-sm font-medium text-gray-500 mb-2 block">Articles</label>
+              <label className="text-sm font-medium text-text-muted mb-2 block">Articles</label>
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
+                  <thead className="bg-surface">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-text-muted">
                         Produit
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Qté</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-text-muted">Qté</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-text-muted">
                         Prix unit.
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-text-muted">
                         Remise
                       </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+                      <th className="px-4 py-2 text-right text-xs font-medium text-text-muted">
                         Total
                       </th>
                     </tr>
@@ -545,21 +564,21 @@ export function SalesContent() {
                     {selectedSale.items.map((item) => (
                       <tr
                         key={item.id}
-                        className="border-b border-gray-200 dark:border-gray-700"
+                        className="border-b border-border-default"
                       >
                         <td className="px-4 py-2">
                           <div className="text-sm font-medium">
                             {item.product?.name || 'Produit supprimé'}
                           </div>
                           {item.product?.sku && (
-                            <div className="text-xs text-gray-500">SKU: {item.product.sku}</div>
+                            <div className="text-xs text-text-muted">SKU: {item.product.sku}</div>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                        <td className="px-4 py-2 text-sm">{item.unitPrice.toFixed(2)} €</td>
-                        <td className="px-4 py-2 text-sm">{item.discount.toFixed(2)} €</td>
+                        <td className="px-4 py-2 text-sm">{item.quantity}{item.product?.unit ? ` ${item.product.unit}` : ''}</td>
+                        <td className="px-4 py-2 text-sm">{selectedSale ? toDefault(Number(item.unitPrice), selectedSale.currencyCode).toFixed(2) : item.unitPrice.toFixed(2)} {currencyLabel}</td>
+                        <td className="px-4 py-2 text-sm">{selectedSale ? toDefault(Number(item.discount), selectedSale.currencyCode).toFixed(2) : item.discount.toFixed(2)} {currencyLabel}</td>
                         <td className="px-4 py-2 text-sm text-right font-medium">
-                          {item.totalPrice.toFixed(2)} €
+                          {selectedSale ? toDefault(Number(item.totalPrice), selectedSale.currencyCode).toFixed(2) : item.totalPrice.toFixed(2)} {currencyLabel}
                         </td>
                       </tr>
                     ))}
@@ -568,32 +587,32 @@ export function SalesContent() {
               </div>
             </div>
 
-            {/* Totaux */}
+            {/* Totaux (affichés en devise par défaut) */}
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Sous-total:</span>
-                <span>{selectedSale.subtotal.toFixed(2)} €</span>
+                <span>{toDefault(Number(selectedSale.subtotal), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
               </div>
               {selectedSale.discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Remise:</span>
-                  <span className="text-red-600">-{selectedSale.discount.toFixed(2)} €</span>
+                  <span className="text-danger">-{toDefault(Number(selectedSale.discount), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
                 </div>
               )}
               {selectedSale.tax > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>TVA (20%):</span>
-                  <span>{selectedSale.tax.toFixed(2)} €</span>
+                  <span>{toDefault(Number(selectedSale.tax), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t pt-2">
                 <span>Total:</span>
-                <span>{selectedSale.total.toFixed(2)} €</span>
+                <span>{toDefault(Number(selectedSale.total), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
               </div>
-              <div className="flex justify-between text-sm text-gray-600">
+              <div className="flex justify-between text-sm text-text-secondary">
                 <span>Marge brute:</span>
-                <span className={selectedSale.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {selectedSale.margin?.toFixed(2) || '0.00'} €
+                <span className={(selectedSale.margin ?? 0) >= 0 ? 'text-success' : 'text-danger'}>
+                  {toDefault(selectedSale.margin || 0, selectedSale.currencyCode).toFixed(2)} {currencyLabel}
                 </span>
               </div>
             </div>
@@ -601,25 +620,141 @@ export function SalesContent() {
             {/* Paiement */}
             {(selectedSale.cashAmount || selectedSale.cardAmount) && (
               <div className="border-t pt-4">
-                <label className="text-sm font-medium text-gray-500 mb-2 block">
+                <label className="text-sm font-medium text-text-muted mb-2 block">
                   Détails du paiement
                 </label>
                 <div className="space-y-1 text-sm">
                   {selectedSale.cashAmount && (
                     <div className="flex justify-between">
                       <span>Espèces:</span>
-                      <span>{selectedSale.cashAmount.toFixed(2)} €</span>
+                      <span>{toDefault(Number(selectedSale.cashAmount), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
                     </div>
                   )}
                   {selectedSale.cardAmount && (
                     <div className="flex justify-between">
                       <span>Carte:</span>
-                      <span>{selectedSale.cardAmount.toFixed(2)} €</span>
+                      <span>{toDefault(Number(selectedSale.cardAmount), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
                     </div>
                   )}
                 </div>
               </div>
             )}
+
+            {/* Historique des avoirs */}
+            {selectedSale.refunds && selectedSale.refunds.length > 0 && (
+              <div className="border-t pt-4">
+                <label className="text-sm font-medium text-text-muted mb-2 block">
+                  Historique des avoirs
+                </label>
+                <div className="space-y-2">
+                  {selectedSale.refunds.map((refund) => (
+                    <div
+                      key={refund.id}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg border border-border-subtle text-[13px]"
+                      style={{ background: '#1E1E28' }}
+                    >
+                      <div>
+                        <span className="font-mono font-medium text-text-primary">
+                          {refund.avoirNumber || `Avoir #${refund.id.slice(0, 8)}`}
+                        </span>
+                        <span className="text-text-muted ml-2">
+                          {formatDate(refund.createdAt)}
+                        </span>
+                        <span className="ml-2 font-mono">
+                          {selectedSale ? toDefault(Number(refund.refundAmount), selectedSale.currencyCode).toFixed(2) : Number(refund.refundAmount).toFixed(2)} {currencyLabel}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="btn"
+                        onClick={async () => {
+                          try {
+                            await generateAvoir(refund, selectedSale, company);
+                            toast.success('Avoir imprimé');
+                          } catch (e) {
+                            toast.error('Erreur lors de l\'impression');
+                          }
+                        }}
+                      >
+                        <Printer className="w-3.5 h-3.5 mr-1" />
+                        Imprimer
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Créer un avoir */}
+      <Modal
+        isOpen={isAvoirModalOpen}
+        onClose={() => setIsAvoirModalOpen(false)}
+        title="Créer un avoir (note de crédit)"
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsAvoirModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleCreateAvoir} disabled={avoirSubmitting}>
+              {avoirSubmitting ? 'Création...' : 'Créer l\'avoir et imprimer'}
+            </Button>
+          </>
+        }
+      >
+        {selectedSale && (
+          <div className="space-y-4">
+            <p className="text-[13px] text-text-secondary">
+              Choisissez les quantités à rembourser. Le stock sera mis à jour et un document avoir sera généré (traçabilité, normes tunisiennes).
+            </p>
+            <div>
+              <label className="label-caption block mb-2">Motif (optionnel)</label>
+              <input
+                type="text"
+                value={avoirReason}
+                onChange={(e) => setAvoirReason(e.target.value)}
+                placeholder="Ex: retour marchandise, erreur de facturation"
+                className="input w-full"
+              />
+            </div>
+            <div className="border border-border-subtle rounded-lg overflow-hidden">
+              <table className="w-full text-[13px]">
+                <thead style={{ background: '#252532' }}>
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold text-text-muted">Produit</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold text-text-muted">Qté max</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold text-text-muted">Qté avoir</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedSale.items.map((item) => (
+                    <tr key={item.id} className="border-t border-border-subtle">
+                      <td className="px-3 py-2">{item.product?.name || 'Produit'}</td>
+                      <td className="px-3 py-2 text-right font-mono">{item.quantity}</td>
+                      <td className="px-3 py-2 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.quantity}
+                          value={avoirQuantities[item.id] ?? 0}
+                          onChange={(e) =>
+                            setAvoirQuantities((prev) => ({
+                              ...prev,
+                              [item.id]: Math.max(0, Math.min(item.quantity, parseInt(e.target.value, 10) || 0)),
+                            }))
+                          }
+                          className="input w-16 text-right"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </Modal>

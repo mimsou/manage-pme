@@ -1,8 +1,8 @@
 export default function InventoryPage() {
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">Inventaire</h1>
-      <p className="text-gray-600 dark:text-gray-400">
+      <h1 className="page-title" style={{ marginBottom: 20 }}>Inventaire</h1>
+      <p className="text-[13px] text-text-secondary">
         Page de gestion des inventaires - À implémenter
       </p>
     </div>

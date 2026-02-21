@@ -3,13 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit, Trash2, Building2, Mail, Phone, MapPin, User, Percent, FileText, ArrowDownCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building2, Mail, Phone, MapPin, User, Percent, ArrowDownCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { suppliersApi } from '@/api/suppliers';
 import { Supplier, CreateSupplierDto } from '@/types/supplier';
 import { useAuthStore } from '@/stores/authStore';
@@ -73,9 +72,10 @@ export default function SuppliersPage() {
         name: data.name,
       };
       Object.keys(data).forEach((key) => {
+        if (key === 'name') return;
         const value = data[key as keyof CreateSupplierDto];
-        if (value !== undefined && value !== null && value !== '' && key !== 'name') {
-          cleanedData[key as keyof CreateSupplierDto] = value;
+        if (value !== undefined && value !== null && value !== '') {
+          (cleanedData as unknown as Record<string, unknown>)[key] = value;
         }
       });
 
@@ -145,37 +145,35 @@ export default function SuppliersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Fournisseurs</h1>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+        <h1 className="page-title">Fournisseurs</h1>
         {isAdminOrManager && (
-          <Button onClick={handleNew}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={handleNew} className="btn">
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             Nouveau fournisseur
           </Button>
         )}
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <Input
-            placeholder="Rechercher un fournisseur..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-            }}
-            icon={<Search className="w-4 h-4" />}
-          />
-        </CardContent>
-      </Card>
+      <div className="mb-4 max-w-sm">
+        <Input
+          placeholder="Rechercher un fournisseur..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          icon={<Search className="w-3.5 h-3.5" />}
+        />
+      </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="text-center py-8">Chargement...</div>
-          ) : suppliers.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Aucun fournisseur trouvé</div>
-          ) : (
-            <Table>
+      {loading ? (
+        <div className="text-center py-8 text-[13px] text-text-secondary">Chargement...</div>
+      ) : suppliers.length === 0 ? (
+        <div className="rounded-[10px] border flex flex-col items-center justify-center py-12" style={{ background: '#1E1E28', border: '1px solid #2A2A38' }}>
+          <Building2 className="w-9 h-9 mb-2" style={{ color: 'rgba(99,102,241,0.3)' }} />
+          <p className="text-[12px] font-medium text-text-muted">Aucun fournisseur trouvé</p>
+          <p className="text-[11px] text-text-muted mt-0.5">Créez un fournisseur ou modifiez la recherche</p>
+        </div>
+      ) : (
+        <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nom</TableHead>
@@ -193,14 +191,14 @@ export default function SuppliersPage() {
                   <TableRow key={supplier.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
+                        <Building2 className="w-4 h-4 text-text-muted" />
                         {supplier.name}
                       </div>
                     </TableCell>
                     <TableCell>
                       {supplier.contactPerson ? (
                         <span className="flex items-center gap-1">
-                          <User className="w-4 h-4 text-gray-400" />
+                          <User className="w-4 h-4 text-text-muted" />
                           {supplier.contactPerson}
                         </span>
                       ) : (
@@ -210,7 +208,7 @@ export default function SuppliersPage() {
                     <TableCell>
                       {supplier.email ? (
                         <span className="flex items-center gap-1">
-                          <Mail className="w-4 h-4 text-gray-400" />
+                          <Mail className="w-4 h-4 text-text-muted" />
                           {supplier.email}
                         </span>
                       ) : (
@@ -220,7 +218,7 @@ export default function SuppliersPage() {
                     <TableCell>
                       {supplier.phone ? (
                         <span className="flex items-center gap-1">
-                          <Phone className="w-4 h-4 text-gray-400" />
+                          <Phone className="w-4 h-4 text-text-muted" />
                           {supplier.phone}
                         </span>
                       ) : (
@@ -230,7 +228,7 @@ export default function SuppliersPage() {
                     <TableCell>
                       {supplier.address || supplier.city ? (
                         <span className="flex items-center gap-1 text-sm">
-                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <MapPin className="w-4 h-4 text-text-muted" />
                           {[supplier.address, supplier.city, supplier.postalCode]
                             .filter(Boolean)
                             .join(', ')}
@@ -241,7 +239,7 @@ export default function SuppliersPage() {
                     </TableCell>
                     <TableCell>
                       {supplier.discount !== undefined && supplier.discount !== null ? (
-                        <span className="flex items-center gap-1 text-green-600 font-medium">
+                        <span className="flex items-center gap-1 text-success font-medium">
                           <Percent className="w-4 h-4" />
                           {supplier.discount}%
                         </span>
@@ -250,37 +248,39 @@ export default function SuppliersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-text-secondary">
                         {supplier._count?.products || 0} produit{supplier._count?.products !== 1 ? 's' : ''}
                       </span>
                     </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               {isAdminOrManager && (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
+                                  <button
+                                    type="button"
+                                    className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                                     onClick={() => navigate(`/entries?supplierId=${supplier.id}`)}
                                     title="Créer une entrée"
                                   >
-                                    <ArrowDownCircle className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
+                                    <ArrowDownCircle className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
                                     onClick={() => handleEdit(supplier)}
+                                    title="Modifier"
                                   >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
+                                    <Edit className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                                  </button>
                                   {user?.role === 'ADMIN' && (
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
+                                    <button
+                                      type="button"
+                                      className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                                       onClick={() => handleDelete(supplier.id)}
+                                      title="Supprimer"
                                     >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                      <Trash2 className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                                    </button>
                                   )}
                                 </>
                               )}
@@ -290,9 +290,7 @@ export default function SuppliersPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+      )}
 
       <Modal
         isOpen={isModalOpen}

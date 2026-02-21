@@ -148,7 +148,8 @@ function generateBarcodeImage(code: string, width: number, height: number): stri
 export function generateBarcodeLabel(
   product: Product,
   quantity: number = 1,
-  format: BarcodeLabelFormat = BarcodeLabelFormat.STANDARD_50x30
+  format: BarcodeLabelFormat = BarcodeLabelFormat.STANDARD_50x30,
+  currencyLabel: string = 'TND'
 ) {
   const dimensions = LABEL_FORMATS[format];
   const doc = new jsPDF({
@@ -201,7 +202,7 @@ export function generateBarcodeLabel(
     yPos += dimensions.fontSize * 0.7;
     doc.setFontSize(dimensions.fontSize * 0.8);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${product.salePrice.toFixed(2)} €`, pageWidth / 2, yPos, { align: 'center' });
+    doc.text(`${Number(product.salePrice).toFixed(2)} ${currencyLabel}`, pageWidth / 2, yPos, { align: 'center' });
   }
 
   // Quantité (si > 1)
@@ -218,16 +219,15 @@ export function generateBarcodeLabel(
 
 export function generateMultipleBarcodeLabels(
   items: Array<{ product: Product; quantity: number }>,
-  format: BarcodeLabelFormat = BarcodeLabelFormat.STANDARD_50x30
+  format: BarcodeLabelFormat = BarcodeLabelFormat.STANDARD_50x30,
+  currencyLabel: string = 'TND'
 ) {
-  const dimensions = LABEL_FORMATS[format];
-  
   items.forEach((item, index) => {
     if (index > 0) {
       // Pour plusieurs étiquettes, on pourrait créer un PDF multi-pages
       // Pour l'instant, on génère des fichiers séparés
     }
-    generateBarcodeLabel(item.product, item.quantity, format);
+    generateBarcodeLabel(item.product, item.quantity, format, currencyLabel);
   });
 }
 

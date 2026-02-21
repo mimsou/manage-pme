@@ -131,15 +131,15 @@ export default function UsersManagementPage() {
   };
 
   if (loading) {
-    return <div className="text-gray-500">Chargement...</div>;
+    return <div className="text-text-muted">Chargement...</div>;
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
         <div>
-          <h1 className="text-2xl font-bold">Gestion des utilisateurs</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="page-title">Gestion des utilisateurs</h1>
+          <p className="text-[13px] text-text-secondary mt-0.5">
             Créer, modifier ou supprimer les comptes utilisateurs de l'application.
           </p>
         </div>
@@ -150,24 +150,24 @@ export default function UsersManagementPage() {
 
       <div className="card overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-700/50">
+          <thead className="bg-surface">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">Nom</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">Email</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rôle</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">Statut</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-text-primary">Nom</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-text-primary">Email</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-text-primary">Rôle</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-text-primary">Statut</th>
               <th className="w-24 px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-border-default">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3">
+              <tr key={user.id} className="hover:bg-elevated transition-colors duration-default ease-default">
+                <td className="px-4 py-3 text-text-primary">
                   {user.firstName} {user.lastName}
                 </td>
-                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{user.email}</td>
+                <td className="px-4 py-3 text-text-secondary">{user.email}</td>
                 <td className="px-4 py-3">
-                  <span className="px-2 py-1 text-xs font-medium rounded bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200">
+                  <span className="px-2 py-1 text-xs font-medium rounded bg-brand/20 text-brand">
                     {user.role}
                   </span>
                 </td>
@@ -175,7 +175,7 @@ export default function UsersManagementPage() {
                   <button
                     type="button"
                     onClick={() => toggleActive(user)}
-                    className={`text-sm font-medium ${user.isActive ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-sm font-medium ${user.isActive ? 'text-success' : 'text-danger'}`}
                   >
                     {user.isActive ? 'Actif' : 'Inactif'}
                   </button>
@@ -184,7 +184,7 @@ export default function UsersManagementPage() {
                   <button
                     type="button"
                     onClick={() => openEdit(user)}
-                    className="p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    className="p-2 text-text-secondary hover:text-brand hover:bg-elevated rounded transition-colors duration-default ease-default"
                     title="Modifier"
                   >
                     <Pencil className="w-4 h-4" />
@@ -194,14 +194,14 @@ export default function UsersManagementPage() {
                       <button
                         type="button"
                         onClick={() => handleDelete(user.id)}
-                        className="text-red-600 font-medium"
+                        className="text-danger font-medium"
                       >
                         Confirmer
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteConfirm(null)}
-                        className="text-gray-500"
+                        className="text-text-muted"
                       >
                         Annuler
                       </button>
@@ -210,7 +210,7 @@ export default function UsersManagementPage() {
                     <button
                       type="button"
                       onClick={() => setDeleteConfirm(user.id)}
-                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded"
+                      className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded transition-colors duration-default ease-default"
                       title="Supprimer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -225,12 +225,12 @@ export default function UsersManagementPage() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setModalOpen(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-4">{editUser ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm" onClick={() => setModalOpen(false)}>
+          <div className="glass bg-card rounded-lg shadow-elevated max-w-md w-full mx-4 p-6 border border-border-subtle" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold mb-4 text-text-primary">{editUser ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prénom</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Prénom</label>
                 <input
                   type="text"
                   value={form.firstName}
@@ -240,7 +240,7 @@ export default function UsersManagementPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Nom</label>
                 <input
                   type="text"
                   value={form.lastName}
@@ -250,7 +250,7 @@ export default function UsersManagementPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Email</label>
                 <input
                   type="email"
                   value={form.email}
@@ -259,11 +259,11 @@ export default function UsersManagementPage() {
                   required
                   disabled={!!editUser}
                 />
-                {editUser && <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié.</p>}
+                {editUser && <p className="text-xs text-text-muted mt-1">L'email ne peut pas être modifié.</p>}
               </div>
               {!editUser && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mot de passe</label>
+                  <label className="block text-sm font-medium text-text-primary mb-1">Mot de passe</label>
                   <input
                     type="password"
                     value={form.password}
@@ -275,7 +275,7 @@ export default function UsersManagementPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Rôle</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}

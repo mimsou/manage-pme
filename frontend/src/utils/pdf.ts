@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { Sale, SaleType, PaymentMethod } from '@/types/sale';
+import { Sale, SaleType, PaymentMethod, SaleRefund, RefundItemLine } from '@/types/sale';
 import { ClientType } from '@/types/client';
 
 export interface CompanyInfo {
@@ -55,6 +55,18 @@ const INVOICE_LOGO_MAX_H = 24;
 const TICKET_LOGO_MAX_W = 56;
 const TICKET_LOGO_MAX_H = 20;
 
+/** Devise d'origine de la vente : affichage sur facture/ticket sans conversion. */
+function getSaleCurrencyLabel(sale: { currencyCode?: string | null }): string {
+  const code = (sale.currencyCode || 'TND').toUpperCase();
+  const map: Record<string, string> = {
+    TND: 'TND', EUR: '€', USD: '$', GBP: '£', CHF: 'CHF', JPY: '¥', CAD: 'CAD',
+    MAD: 'MAD', DZD: 'DZD', SAR: 'SAR', AED: 'AED', KWD: 'KWD', CNY: '¥',
+    DKK: 'DKK', NOK: 'NOK', SEK: 'SEK', BHD: 'BHD', QAR: 'QAR', OMR: 'OMR',
+    LYD: 'LYD', MRU: 'MRU',
+  };
+  return map[code] || code;
+}
+
 function getCompanyDisplay(company: CompanyInfo | null | undefined): CompanyInfo {
   if (!company) return DEFAULT_COMPANY;
   return {
@@ -75,6 +87,7 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   const pageHeight = doc.internal.pageSize.getHeight();
   const companyDisplay = getCompanyDisplay(company);
   const companyTextX = 20;
+  const currencyLabel = getSaleCurrencyLabel(sale);
 
   let headerStartY = 20;
 
@@ -226,10 +239,11 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
       doc.text(line, colX[0] + 2, yPos + 2);
     });
 
-    doc.text(item.quantity.toString(), colX[1] + 2, yPos + 2);
-    doc.text(`${item.unitPrice.toFixed(2)} €`, colX[2] + 2, yPos + 2);
-    doc.text(`${item.discount.toFixed(2)} €`, colX[3] + 2, yPos + 2);
-    doc.text(`${item.totalPrice.toFixed(2)} €`, colX[4] + 2, yPos + 2, { align: 'right' });
+    const unitStr = (item.product as any)?.unit ? ` ${(item.product as any).unit}` : '';
+    doc.text(`${item.quantity}${unitStr}`, colX[1] + 2, yPos + 2);
+    doc.text(`${item.unitPrice.toFixed(2)} ${currencyLabel}`, colX[2] + 2, yPos + 2);
+    doc.text(`${item.discount.toFixed(2)} ${currencyLabel}`, colX[3] + 2, yPos + 2);
+    doc.text(`${item.totalPrice.toFixed(2)} ${currencyLabel}`, colX[4] + 2, yPos + 2, { align: 'right' });
 
     yPos += Math.max(8, lines.length * 5);
   });
@@ -240,25 +254,25 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   
   doc.setFontSize(10);
   doc.text('Sous-total HT:', totalsX, yPos, { align: 'right' });
-  doc.text(`${sale.subtotal.toFixed(2)} €`, pageWidth - 20, yPos, { align: 'right' });
+  doc.text(`${sale.subtotal.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
   
   if (sale.discount > 0) {
     yPos += 5;
     doc.text('Remise:', totalsX, yPos, { align: 'right' });
-    doc.text(`-${sale.discount.toFixed(2)} €`, pageWidth - 20, yPos, { align: 'right' });
+    doc.text(`-${sale.discount.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
   }
 
   if (sale.tax > 0) {
     yPos += 5;
     doc.text('TVA (20%):', totalsX, yPos, { align: 'right' });
-    doc.text(`${sale.tax.toFixed(2)} €`, pageWidth - 20, yPos, { align: 'right' });
+    doc.text(`${sale.tax.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
   }
 
   yPos += 5;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL TTC:', totalsX, yPos, { align: 'right' });
-  doc.text(`${sale.total.toFixed(2)} €`, pageWidth - 20, yPos, { align: 'right' });
+  doc.text(`${sale.total.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
 
   // Paiement
   yPos += 10;
@@ -269,11 +283,11 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   
   if (sale.cashAmount) {
     yPos += 5;
-    doc.text(`Espèces: ${sale.cashAmount.toFixed(2)} €`, 20, yPos);
+    doc.text(`Espèces: ${sale.cashAmount.toFixed(2)} ${currencyLabel}`, 20, yPos);
   }
   if (sale.cardAmount) {
     yPos += 5;
-    doc.text(`Carte: ${sale.cardAmount.toFixed(2)} €`, 20, yPos);
+    doc.text(`Carte: ${sale.cardAmount.toFixed(2)} ${currencyLabel}`, 20, yPos);
   }
 
   // Mentions légales
@@ -283,7 +297,7 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   yPos += 4;
   doc.text('En cas de retard de paiement, des pénalités de 3 fois le taux légal seront appliquées.', 20, yPos);
   yPos += 4;
-  doc.text('Une indemnité forfaitaire pour frais de recouvrement de 40€ sera due en cas de retard.', 20, yPos);
+  doc.text(`Une indemnité forfaitaire pour frais de recouvrement (voir conditions) sera due en cas de retard.`, 20, yPos);
 
   // Vendeur
   if (sale.user) {
@@ -295,6 +309,190 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   doc.save(`facture-${sale.invoiceNumber || sale.id}.pdf`);
 }
 
+/**
+ * Génère le PDF d'un avoir (note de crédit) — conforme aux usages tunisiens :
+ * référence à la facture/ticket d'origine, numéro d'avoir, date, client, désignation des biens, montants HT/TVA/TTC.
+ */
+export async function generateAvoir(
+  refund: SaleRefund,
+  sale: Sale,
+  company?: CompanyInfo | null,
+) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const companyDisplay = getCompanyDisplay(company);
+  const companyTextX = 20;
+
+  const items = (refund.refundedItems || []) as RefundItemLine[];
+  const subtotal = items.reduce((s, i) => s + Number(i.totalPrice), 0);
+  const taxRate = sale.type === SaleType.INVOICE ? 0.2 : 0;
+  const tax = subtotal * taxRate;
+  const total = subtotal + tax;
+  const currencyLabel = getSaleCurrencyLabel(sale);
+
+  let headerStartY = 20;
+  if (companyDisplay.logo) {
+    try {
+      const { width: natW, height: natH } = await getImageDimensions(companyDisplay.logo);
+      const { w: logoW, h: logoH } = fitInBox(natW, natH, INVOICE_LOGO_MAX_W, INVOICE_LOGO_MAX_H);
+      const logoX = (pageWidth - logoW) / 2;
+      const logoY = 15;
+      const format = companyDisplay.logo.includes('png') ? 'PNG' : 'JPEG';
+      doc.addImage(companyDisplay.logo, format, logoX, logoY, logoW, logoH);
+      headerStartY = logoY + logoH + 10;
+    } catch (_) {}
+  }
+
+  const formatDateSafe = (d: string | Date | null | undefined): string => {
+    if (d == null) return '-';
+    const t = new Date(d);
+    return isNaN(t.getTime()) ? '-' : t.toLocaleDateString('fr-FR');
+  };
+
+  let yPos = headerStartY;
+
+  // Titre : NOTE DE CRÉDIT (AVOIR) — centré en haut, taille réduite pour rester dans la page
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(180, 0, 0);
+  doc.text('NOTE DE CRÉDIT (AVOIR)', pageWidth / 2, yPos, { align: 'center' });
+
+  yPos += 10;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  const rightBlockX = pageWidth - 20;
+  doc.text(`N° Avoir: ${refund.avoirNumber || refund.id}`, rightBlockX, yPos, { align: 'right' });
+  yPos += 5;
+  doc.text(`Date: ${formatDateSafe(refund.createdAt)}`, rightBlockX, yPos, { align: 'right' });
+  yPos += 6;
+  doc.setFont('helvetica', 'bold');
+  const refOrig = sale.invoiceNumber || sale.ticketNumber || sale.id;
+  doc.text(`Référence facture d'origine: ${refOrig}`, rightBlockX, yPos, { align: 'right' });
+  yPos += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Date facture: ${formatDateSafe(sale.createdAt)}`, rightBlockX, yPos, { align: 'right' });
+
+  // Société (gauche)
+  yPos = headerStartY;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(companyDisplay.name || '', companyTextX, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (companyDisplay.address) {
+    doc.text(companyDisplay.address, companyTextX, yPos);
+    yPos += 5;
+  }
+  if (companyDisplay.city) {
+    doc.text(companyDisplay.city, companyTextX, yPos);
+    yPos += 5;
+  }
+  if (companyDisplay.vatNumber) {
+    doc.text(`TVA: ${companyDisplay.vatNumber}`, companyTextX, yPos);
+    yPos += 5;
+  }
+
+  // Client
+  yPos += 8;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENT (bénéficiaire de l\'avoir):', 20, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (sale.client) {
+    const name =
+      sale.client.type === ClientType.SOCIETE && sale.client.companyName
+        ? sale.client.companyName
+        : `${sale.client.firstName || ''} ${sale.client.lastName || ''}`.trim() || 'Particulier';
+    doc.text(name, 20, yPos);
+    yPos += 5;
+    if (sale.client.address) {
+      doc.text(sale.client.address, 20, yPos);
+      yPos += 5;
+    }
+    if (sale.client.vatNumber) {
+      doc.text(`TVA: ${sale.client.vatNumber}`, 20, yPos);
+      yPos += 5;
+    }
+  } else {
+    doc.text('Particulier', 20, yPos);
+    yPos += 5;
+  }
+
+  if (refund.reason) {
+    yPos += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Motif:', 20, yPos);
+    yPos += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.text(refund.reason, 20, yPos);
+    yPos += 8;
+  }
+
+  // Tableau des lignes
+  yPos += 10;
+  const tableWidth = pageWidth - 40;
+  const colX = [20, 100, 120, 150, 180];
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.rect(20, yPos - 5, tableWidth, 8);
+  doc.text('Désignation', colX[0], yPos);
+  doc.text('Qté', colX[1], yPos);
+  doc.text('Prix unit. HT', colX[2], yPos);
+  doc.text('Total HT', colX[4], yPos);
+  yPos += 8;
+  doc.setFont('helvetica', 'normal');
+
+  items.forEach((item) => {
+    if (yPos > pageHeight - 50) {
+      doc.addPage();
+      yPos = 20;
+    }
+    const productName = item.productName || 'Produit';
+    const lines = doc.splitTextToSize(productName, 75);
+    lines.forEach((line: string, idx: number) => {
+      if (idx === 0) doc.rect(20, yPos - 4, tableWidth, 8);
+      doc.text(line, colX[0] + 2, yPos + 2);
+    });
+    doc.text(String(item.quantity), colX[1] + 2, yPos + 2);
+    doc.text(`${Number(item.unitPrice).toFixed(2)} ${currencyLabel}`, colX[2] + 2, yPos + 2);
+    doc.text(`${Number(item.totalPrice).toFixed(2)} ${currencyLabel}`, colX[4] + 2, yPos + 2, { align: 'right' });
+    yPos += Math.max(8, lines.length * 5);
+  });
+
+  yPos += 5;
+  const totalsX = pageWidth - 60;
+  doc.text('Sous-total HT:', totalsX, yPos, { align: 'right' });
+  doc.text(`${subtotal.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+  if (tax > 0) {
+    yPos += 5;
+    doc.text('TVA (20%):', totalsX, yPos, { align: 'right' });
+    doc.text(`${tax.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+  }
+  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total TTC (crédit):', totalsX, yPos, { align: 'right' });
+  doc.text(`${total.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+
+  yPos = pageHeight - 28;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(
+    'Document tenant lieu de facture. Référence à la facture d\'origine obligatoire (art. 18 Code TVA Tunisie).',
+    20,
+    yPos,
+  );
+  yPos += 4;
+  doc.text('Cet avoir annule ou réduit la créance correspondante.', 20, yPos);
+
+  doc.save(`avoir-${refund.avoirNumber || refund.id}.pdf`);
+}
+
 export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
   const doc = new jsPDF({
     format: [80, 200], // Format ticket standard (80mm de largeur)
@@ -303,6 +501,7 @@ export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const companyDisplay = getCompanyDisplay(company);
+  const currencyLabel = getSaleCurrencyLabel(sale);
   let yPos = 10;
 
   if (companyDisplay.logo) {
@@ -373,14 +572,15 @@ export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
     });
 
     doc.setFontSize(8);
-    const lineText = `${item.quantity} x ${item.unitPrice.toFixed(2)} €`;
+    const unitStr = (item.product as any)?.unit ? ` ${(item.product as any).unit}` : '';
+    const lineText = `${item.quantity}${unitStr} x ${item.unitPrice.toFixed(2)} ${currencyLabel}`;
     if (item.discount > 0) {
-      doc.text(`${lineText} - Remise: ${item.discount.toFixed(2)} €`, 10, yPos);
+      doc.text(`${lineText} - Remise: ${item.discount.toFixed(2)} ${currencyLabel}`, 10, yPos);
     } else {
       doc.text(lineText, 10, yPos);
     }
     yPos += 3;
-    doc.text(`Total: ${item.totalPrice.toFixed(2)} €`, pageWidth - 10, yPos, { align: 'right' });
+    doc.text(`Total: ${item.totalPrice.toFixed(2)} ${currencyLabel}`, pageWidth - 10, yPos, { align: 'right' });
     yPos += 5;
   });
 
@@ -392,25 +592,25 @@ export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
   yPos += 5;
   doc.setFontSize(9);
   doc.text('Sous-total:', 10, yPos);
-  doc.text(`${sale.subtotal.toFixed(2)} €`, pageWidth - 10, yPos, { align: 'right' });
+  doc.text(`${sale.subtotal.toFixed(2)} ${currencyLabel}`, pageWidth - 10, yPos, { align: 'right' });
 
   if (sale.discount > 0) {
     yPos += 4;
     doc.text('Remise:', 10, yPos);
-    doc.text(`-${sale.discount.toFixed(2)} €`, pageWidth - 10, yPos, { align: 'right' });
+    doc.text(`-${sale.discount.toFixed(2)} ${currencyLabel}`, pageWidth - 10, yPos, { align: 'right' });
   }
 
   if (sale.tax > 0) {
     yPos += 4;
     doc.text('TVA:', 10, yPos);
-    doc.text(`${sale.tax.toFixed(2)} €`, pageWidth - 10, yPos, { align: 'right' });
+    doc.text(`${sale.tax.toFixed(2)} ${currencyLabel}`, pageWidth - 10, yPos, { align: 'right' });
   }
 
   yPos += 4;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL:', 10, yPos);
-  doc.text(`${sale.total.toFixed(2)} €`, pageWidth - 10, yPos, { align: 'right' });
+  doc.text(`${sale.total.toFixed(2)} ${currencyLabel}`, pageWidth - 10, yPos, { align: 'right' });
 
   // Paiement
   yPos += 6;
@@ -421,11 +621,11 @@ export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
 
   if (sale.cashAmount) {
     yPos += 4;
-    doc.text(`Espèces: ${sale.cashAmount.toFixed(2)} €`, pageWidth / 2, yPos, { align: 'center' });
+    doc.text(`Espèces: ${sale.cashAmount.toFixed(2)} ${currencyLabel}`, pageWidth / 2, yPos, { align: 'center' });
   }
   if (sale.cardAmount) {
     yPos += 4;
-    doc.text(`Carte: ${sale.cardAmount.toFixed(2)} €`, pageWidth / 2, yPos, { align: 'center' });
+    doc.text(`Carte: ${sale.cardAmount.toFixed(2)} ${currencyLabel}`, pageWidth / 2, yPos, { align: 'center' });
   }
 
   // Ligne de séparation

@@ -51,4 +51,9 @@ export class UpdateCompanyDto {
   @IsString()
   @IsOptional()
   logo?: string;
+
+  @ApiProperty({ required: false, description: 'Code devise par défaut (ex: TND, EUR)' })
+  @IsString()
+  @IsOptional()
+  defaultCurrencyCode?: string;
 }

@@ -1,0 +1,27 @@
+# Blueprint Render - Manage PME
+# https://render.com/docs/blueprint-spec
+# Déploiement : New > Blueprint > connecter ce repo
+
+databases:
+  - name: manage-pme-db
+    databaseName: manage_pme
+    plan: free
+
+services:
+  - type: web
+    runtime: docker
+    name: manage-pme
+    plan: free
+    healthCheckPath: /api
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: manage-pme-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # FRONTEND_URL optionnel : autoriser CORS depuis une URL (ex. custom domain)
+      # - key: FRONTEND_URL
+      #   value: https://votre-domaine.com

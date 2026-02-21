@@ -3,6 +3,7 @@ import { Search, X, ChevronDown } from 'lucide-react';
 import { Product } from '@/types/product';
 import { productsApi } from '@/api/products';
 import { cn } from '@/lib/utils';
+import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 
 interface ProductSelectProps {
   value?: string;
@@ -28,6 +29,7 @@ export function ProductSelect({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { currencyLabel } = useDefaultCurrency();
 
   useEffect(() => {
     // Charger le produit sélectionné si value existe
@@ -112,15 +114,15 @@ export function ProductSelect({
     <div className="w-full relative" ref={wrapperRef}>
       <div className="relative">
         {selectedProduct ? (
-          <div className="flex items-center justify-between px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+          <div className="flex items-center justify-between px-3 py-2 border rounded-lg bg-card border-border-default">
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{selectedProduct.name}</div>
-              <div className="text-xs text-gray-500">SKU: {selectedProduct.sku}</div>
+              <div className="text-sm font-medium truncate text-text-primary">{selectedProduct.name}</div>
+              <div className="text-xs text-text-muted">SKU: {selectedProduct.sku}</div>
             </div>
             <button
               type="button"
               onClick={handleClear}
-              className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="ml-2 text-text-muted hover:text-text-primary transition-colors duration-default ease-default"
             >
               <X className="w-4 h-4" />
             </button>
@@ -139,30 +141,30 @@ export function ProductSelect({
               placeholder={placeholder}
               disabled={disabled}
               className={cn(
-                'w-full px-3 py-2 pl-10 border rounded-lg bg-white dark:bg-gray-800',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500',
+                'w-full px-3 py-2 pl-10 border rounded-lg bg-card text-text-primary placeholder-text-muted',
+                'focus:outline-none focus:ring-2 focus:ring-brand',
                 error
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600',
+                  ? 'border-danger focus:ring-danger'
+                  : 'border-border-default',
                 disabled && 'opacity-50 cursor-not-allowed'
               )}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
           </div>
         )}
       </div>
 
       {error && (
-        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-1 text-sm text-danger">{error}</p>
       )}
 
       {isOpen && !selectedProduct && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-border-default rounded-lg shadow-elevated max-h-60 overflow-auto">
           {loading ? (
-            <div className="px-4 py-2 text-sm text-gray-500">Recherche...</div>
+            <div className="px-4 py-2 text-sm text-text-muted">Recherche...</div>
           ) : products.length === 0 ? (
-            <div className="px-4 py-2 text-sm text-gray-500">
+            <div className="px-4 py-2 text-sm text-text-muted">
               {searchTerm.length < 2
                 ? 'Tapez au moins 2 caractères pour rechercher'
                 : 'Aucun produit trouvé'}
@@ -173,11 +175,11 @@ export function ProductSelect({
                 <li
                   key={product.id}
                   onClick={() => handleSelect(product)}
-                  className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                  className="px-4 py-2 hover:bg-elevated cursor-pointer transition-colors duration-default ease-default text-text-primary"
                 >
                   <div className="text-sm font-medium">{product.name}</div>
-                  <div className="text-xs text-gray-500">
-                    SKU: {product.sku} | Stock: {product.stockCurrent} | Prix: {product.purchasePrice.toFixed(2)} €
+                  <div className="text-xs text-text-muted">
+                    SKU: {product.sku} | Stock: {product.stockCurrent} | Prix: {Number(product.purchasePrice).toFixed(2)} {currencyLabel}
                   </div>
                 </li>
               ))}

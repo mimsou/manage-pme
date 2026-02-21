@@ -1,24 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CurrencyService } from '../currency/currency.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private currencyService: CurrencyService,
+  ) {}
 
   async getStats(startDate?: Date, endDate?: Date) {
-    const where: any = {};
-
+    const where: any = { status: 'COMPLETED' };
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = startDate;
       if (endDate) where.createdAt.lte = endDate;
     }
 
+    const defaultCode = await this.currencyService.getDefaultCurrencyCode();
+    const rates = await this.currencyService.getLatestRates();
+
     const [
       totalSales,
-      totalRevenue,
-      totalMargin,
+      salesForTotals,
       topProducts,
       lowStockProducts,
       recentSales,
@@ -26,38 +31,14 @@ export class DashboardService {
       totalPurchaseAmount,
       pendingPurchases,
     ] = await Promise.all([
-      this.prisma.sale.count({
-        where: {
-          ...where,
-          status: 'COMPLETED',
-        },
-      }),
-      this.prisma.sale.aggregate({
-        where: {
-          ...where,
-          status: 'COMPLETED',
-        },
-        _sum: {
-          total: true,
-        },
-      }),
-      this.prisma.sale.aggregate({
-        where: {
-          ...where,
-          status: 'COMPLETED',
-        },
-        _sum: {
-          margin: true,
-        },
+      this.prisma.sale.count({ where }),
+      this.prisma.sale.findMany({
+        where,
+        select: { total: true, margin: true, currencyCode: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: {
-          sale: {
-            ...where,
-            status: 'COMPLETED',
-          },
-        },
+        where: { sale: where },
         _sum: {
           quantity: true,
           totalPrice: true,
@@ -76,10 +57,7 @@ export class DashboardService {
         take: 50, // Prendre plus pour filtrer ensuite
       }),
       this.prisma.sale.findMany({
-        where: {
-          ...where,
-          status: 'COMPLETED',
-        },
+        where,
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -151,10 +129,21 @@ export class DashboardService {
       })
     );
 
+    let totalRevenue = 0;
+    let totalMargin = 0;
+    for (const s of salesForTotals) {
+      const code = s.currencyCode || 'TND';
+      totalRevenue += this.currencyService.convert(Number(s.total), code, defaultCode, rates);
+      totalMargin += s.margin
+        ? this.currencyService.convert(Number(s.margin), code, defaultCode, rates)
+        : 0;
+    }
+
     return {
       totalSales,
-      totalRevenue: totalRevenue._sum.total || new Decimal(0),
-      totalMargin: totalMargin._sum.margin || new Decimal(0),
+      defaultCurrencyCode: defaultCode,
+      totalRevenue: new Decimal(totalRevenue.toFixed(2)),
+      totalMargin: new Decimal(totalMargin.toFixed(2)),
       topProducts: topProductsWithDetails,
       lowStockProducts: filteredLowStock,
       recentSales,
@@ -165,25 +154,40 @@ export class DashboardService {
   }
 
   async getSalesChart(startDate: Date, endDate: Date, groupBy: 'day' | 'week' | 'month' = 'day') {
-    // Cette fonction nécessiterait une requête SQL brute pour grouper par période
-    // Pour l'instant, on retourne les ventes par jour
     const sales = await this.prisma.sale.findMany({
       where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: { gte: startDate, lte: endDate },
         status: 'COMPLETED',
       },
       select: {
         createdAt: true,
         total: true,
         margin: true,
+        currencyCode: true,
       },
       orderBy: { createdAt: 'asc' },
     });
 
-    return sales;
+    const defaultCode = await this.currencyService.getDefaultCurrencyCode();
+    const rates = await this.currencyService.getLatestRates();
+
+    return sales.map((s) => ({
+      date: s.createdAt,
+      value: this.currencyService.convert(
+        Number(s.total),
+        s.currencyCode || 'TND',
+        defaultCode,
+        rates,
+      ),
+      margin: s.margin
+        ? this.currencyService.convert(
+            Number(s.margin),
+            s.currencyCode || 'TND',
+            defaultCode,
+            rates,
+          )
+        : 0,
+    }));
   }
 }
 

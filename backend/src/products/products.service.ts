@@ -278,6 +278,7 @@ export class ProductsService {
             barcode: variantData.barcode,
             purchasePrice: variantData.purchasePrice,
             salePrice: variantData.salePrice,
+            unit: data.unit ?? 'pièce',
             stockCurrent: variantData.stockCurrent,
             stockMin: variantData.stockMin,
             hasVariants: false,

@@ -57,21 +57,57 @@ model RefreshToken {
 // ============================================
 
 model Company {
-  id          String   @id @default(uuid())
-  name        String?
-  address     String?
-  city        String?
-  postalCode  String?
-  country     String?  @default("FR")
-  phone       String?
-  email       String?
-  siret       String?
-  vatNumber   String?
-  logo        String?  // base64 data URL ou URL du logo
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  name                String?
+  address             String?
+  city                String?
+  postalCode          String?
+  country             String?  @default("FR")
+  phone               String?
+  email               String?
+  siret               String?
+  vatNumber           String?
+  logo                String?  // base64 data URL ou URL du logo
+  defaultCurrencyCode String?  @default("TND") // Devise globale de l'application
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("company")
+}
+
+// ============================================
+// DEVISES & CHANGE
+// ============================================
+
+model Currency {
+  id        String   @id @default(uuid())
+  code      String   @unique // USD, EUR, TND, etc.
+  name      String   // Dollar des USA, Euro, Dinar tunisien
+  symbol    String?  // $, €, DT
+  unit      Int      @default(1) // Unité de cotation (1, 10, 100 pour BCT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exchangeRates ExchangeRate[]
+
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid())
+  currencyCode String   // Code devise (référence, pas FK pour souplesse)
+  rateToTND    Decimal  @db.Decimal(18, 6) // 1 unité de cette devise = X TND
+  rateDate     DateTime @db.Date
+  source       String?  // BCT, manuel, etc.
+  createdAt    DateTime @default(now())
+
+  currency Currency? @relation(fields: [currencyCode], references: [code], onDelete: Cascade)
+
+  @@unique([currencyCode, rateDate])
+  @@index([currencyCode])
+  @@index([rateDate])
+  @@map("exchange_rates")
 }
 
 // ============================================
@@ -102,6 +138,7 @@ model Product {
   categoryId      String
   purchasePrice   Decimal  @db.Decimal(10, 2)
   salePrice       Decimal  @db.Decimal(10, 2)
+  unit            String?  @default("pièce") // Unité de vente: pièce, kg, m, L, etc.
   stockMin        Int      @default(0)
   stockCurrent    Int      @default(0)
   isActive        Boolean  @default(true)
@@ -359,6 +396,7 @@ model Sale {
   cashAmount      Decimal?     @db.Decimal(10, 2)
   cardAmount      Decimal?     @db.Decimal(10, 2)
   margin          Decimal?     @db.Decimal(10, 2) // Marge brute
+  currencyCode    String?      // Devise de la vente (null = devise par défaut au moment de la création)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -400,14 +438,17 @@ model SaleItem {
 model SaleRefund {
   id              String   @id @default(uuid())
   saleId          String
-  reason          String?
+  avoirNumber     String?  @unique // Numéro d'avoir (ex: AV-20250219-001) — norme tunisienne
+  reason          String?  // Motif de l'avoir
   refundAmount    Decimal  @db.Decimal(10, 2)
-  refundedItems   Json?    // Détails des articles remboursés
+  refundedItems   Json?    // [{ saleItemId, productId, productName, quantity, unitPrice, totalPrice, taxAmount }]
+  userId          String?  // Utilisateur ayant émis l'avoir (traçabilité)
   createdAt       DateTime @default(now())
 
   sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([saleId])
+  @@index([avoirNumber])
   @@map("sale_refunds")
 }
 
@@ -454,6 +495,7 @@ enum StockMovementType {
   INVENTORY  // Inventaire
   ADJUSTMENT // Ajustement
   RETURN     // Retour fournisseur
+  REFUND     // Avoir / remboursement client
   LOSS       // Perte
   THEFT      // Vol
   DAMAGE     // Casse

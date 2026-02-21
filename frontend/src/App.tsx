@@ -8,9 +8,12 @@ import POSPage from './pages/POSPage';
 import ClientsPage from './pages/ClientsPage';
 import SuppliersPage from './pages/SuppliersPage';
 import EntriesPage from './pages/EntriesPage';
+import SalesPage from './pages/SalesPage';
+import StockPage from './pages/StockPage';
 import Layout from './components/Layout';
 import ManagementLayout from './components/ManagementLayout';
 import CompanyIdentityPage from './pages/management/CompanyIdentityPage';
+import CurrencyManagementPage from './pages/management/CurrencyManagementPage';
 import UsersManagementPage from './pages/management/UsersManagementPage';
 
 function App() {
@@ -26,6 +29,8 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="pos" element={<POSPage />} />
+            <Route path="sales" element={<SalesPage />} />
+            <Route path="stock" element={<StockPage />} />
             <Route path="clients" element={<ClientsPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="entries" element={<EntriesPage />} />
@@ -33,6 +38,7 @@ function App() {
           <Route path="/management" element={isAuthenticated ? <ManagementLayout /> : <Navigate to="/login" />}>
             <Route index element={<Navigate to="/management/company" replace />} />
             <Route path="company" element={<CompanyIdentityPage />} />
+            <Route path="currency" element={<CurrencyManagementPage />} />
             <Route path="users" element={<UsersManagementPage />} />
           </Route>
         </Routes>

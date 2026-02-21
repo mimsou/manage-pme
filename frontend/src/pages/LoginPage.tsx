@@ -26,22 +26,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700">
-      <div className="card w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-6">Manage PME</h1>
-        <h2 className="text-xl text-center mb-8 text-gray-600 dark:text-gray-400">
+    <div className="min-h-screen flex items-center justify-center relative z-[1] px-4">
+      {/* Single card on base: elevation via bg-card + border only, no shadow */}
+      <div className="w-full max-w-md bg-card border border-border-subtle rounded-[14px] p-8">
+        <h1 className="page-title text-center mb-2">
+          Manage PME
+        </h1>
+        <p className="text-center text-text-secondary text-sm mb-8">
           Connexion
-        </h2>
+        </p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg">
+          <div className="mb-5 p-3 bg-danger/10 text-danger rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
+            <label
+              htmlFor="email"
+              className="label-caption block mb-1.5"
+            >
               Email
             </label>
             <input
@@ -49,14 +55,17 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input"
+              className="input w-full"
               required
               placeholder="admin@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
+            <label
+              htmlFor="password"
+              className="label-caption block mb-1.5"
+            >
               Mot de passe
             </label>
             <input
@@ -64,7 +73,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input"
+              className="input w-full"
               required
               placeholder="••••••••"
             />
@@ -73,18 +82,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-full"
+            className="btn btn-primary w-full py-2.5"
           >
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Compte de démo:</p>
-          <p className="mt-2">admin@example.com / password123</p>
+        <div className="mt-6 pt-6 border-t border-border-subtle text-center">
+          <p className="text-xs label-caption mb-1">Compte de démo</p>
+          <p className="text-sm text-text-muted font-mono">
+            admin@example.com / password123
+          </p>
         </div>
       </div>
     </div>
   );
 }
-

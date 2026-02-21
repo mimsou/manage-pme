@@ -43,6 +43,7 @@ export interface Sale {
   ticketNumber?: string;
   invoiceNumber?: string;
   items: SaleItem[];
+  refunds?: SaleRefund[];
   subtotal: number;
   discount: number;
   tax: number;
@@ -51,6 +52,7 @@ export interface Sale {
   paymentMethod: PaymentMethod;
   cashAmount?: number;
   cardAmount?: number;
+  currencyCode?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +61,8 @@ export interface CreateSaleDto {
   clientId?: string;
   cashRegisterId?: string;
   type: SaleType;
+  /** Si absent, la devise par défaut de l'application est utilisée. */
+  currencyCode?: string;
   items: {
     productId: string;
     quantity: number;
@@ -69,6 +73,33 @@ export interface CreateSaleDto {
   paymentMethod: PaymentMethod;
   cashAmount?: number;
   cardAmount?: number;
+}
+
+/** Ligne remboursée dans un avoir */
+export interface RefundItemLine {
+  saleItemId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  taxAmount?: number;
+}
+
+export interface SaleRefund {
+  id: string;
+  saleId: string;
+  avoirNumber: string | null;
+  reason: string | null;
+  refundAmount: number;
+  refundedItems: RefundItemLine[] | null;
+  createdAt: string;
+  sale?: Sale;
+}
+
+export interface CreateRefundDto {
+  items: { saleItemId: string; quantity: number }[];
+  reason?: string;
 }
 
 export type { Client };
