@@ -4,14 +4,33 @@ if [ -z "$DATABASE_URL" ]; then
   echo "=============================================="
   echo "ERROR: DATABASE_URL is not set."
   echo ""
-  echo "On Render:"
-  echo "  1. Open Dashboard > manage-pme (Web Service) > Environment"
-  echo "  2. Add: DATABASE_URL = (copy 'Internal Database URL' from manage-pme-db)"
-  echo "  3. Save and redeploy"
+  echo "On Render: Dashboard > manage-pme > Environment"
+  echo "  Add DATABASE_URL = Internal Database URL from manage-pme-db"
+  echo "=============================================="
+  exit 1
+fi
+if [ -z "$JWT_SECRET" ]; then
+  echo "=============================================="
+  echo "ERROR: JWT_SECRET is not set."
+  echo ""
+  echo "On Render: Dashboard > manage-pme > Environment"
+  echo "  Add JWT_SECRET = (long random string, e.g. 32+ chars)"
+  echo "  Add JWT_REFRESH_SECRET = (another long random string)"
+  echo "  Then Save and redeploy"
+  echo "=============================================="
+  exit 1
+fi
+if [ -z "$JWT_REFRESH_SECRET" ]; then
+  echo "=============================================="
+  echo "ERROR: JWT_REFRESH_SECRET is not set."
+  echo ""
+  echo "On Render: Dashboard > manage-pme > Environment"
+  echo "  Add JWT_REFRESH_SECRET = (long random string)"
   echo "=============================================="
   exit 1
 fi
 npx prisma migrate deploy
+node scripts/seed-default-user.js
 
 # Nest peut sortir main.js à la racine de dist/ ou dans dist/src/
 if [ -f dist/main.js ]; then

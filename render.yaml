@@ -1,8 +1,9 @@
 # Blueprint Render - Manage PME
 # https://render.com/docs/blueprint-spec
 # Déploiement : New > Blueprint > connecter ce repo
-# Si DATABASE_URL est absent au démarrage : Dashboard > manage-pme > Environment >
-#   ajouter DATABASE_URL et coller la "Internal Database URL" de manage-pme-db.
+# Si DATABASE_URL ou JWT_SECRET manquent : Dashboard > manage-pme > Environment >
+#   ajouter DATABASE_URL (Internal Database URL de manage-pme-db) et
+#   JWT_SECRET + JWT_REFRESH_SECRET (générer des valeurs aléatoires longues).
 
 databases:
   - name: manage-pme-db
@@ -24,6 +25,13 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # Optionnel : premier admin (sinon admin@example.com / ChangeMe123!)
+      # - key: ADMIN_EMAIL
+      #   value: admin@votredomaine.com
+      # - key: ADMIN_PASSWORD
+      #   sync: false
       # FRONTEND_URL optionnel : autoriser CORS depuis une URL (ex. custom domain)
       # - key: FRONTEND_URL
       #   value: https://votre-domaine.com

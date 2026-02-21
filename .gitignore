@@ -31,8 +31,8 @@ out/
 .DS_Store
 Thumbs.db
 
-# Prisma
-backend/prisma/migrations/
+# Prisma (keep migrations/ in repo for deploy - do not ignore)
+# backend/prisma/migrations/
 
 # Build
 *.tsbuildinfo

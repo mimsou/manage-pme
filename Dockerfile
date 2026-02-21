@@ -49,8 +49,9 @@ RUN npx prisma generate
 # Build backend
 COPY --from=backend-builder /app/backend/dist ./dist
 
-# Script de démarrage (vérifie DATABASE_URL, migrations, puis node)
+# Scripts de démarrage et seed user par défaut
 COPY backend/scripts/start.sh ./scripts/start.sh
+COPY backend/scripts/seed-default-user.js ./scripts/seed-default-user.js
 RUN chmod +x ./scripts/start.sh
 
 # Frontend statique (servi par Nest en prod)
