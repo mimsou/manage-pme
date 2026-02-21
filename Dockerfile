@@ -33,6 +33,9 @@ RUN npm run build
 # ============================================
 FROM node:20-alpine AS production
 
+# OpenSSL pour Prisma (évite le warning et erreurs de connexion)
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Dépendances backend (incl. prisma pour migrate deploy au démarrage)

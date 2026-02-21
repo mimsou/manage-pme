@@ -1,6 +1,8 @@
 # Blueprint Render - Manage PME
 # https://render.com/docs/blueprint-spec
 # Déploiement : New > Blueprint > connecter ce repo
+# Si DATABASE_URL est absent au démarrage : Dashboard > manage-pme > Environment >
+#   ajouter DATABASE_URL et coller la "Internal Database URL" de manage-pme-db.
 
 databases:
   - name: manage-pme-db
