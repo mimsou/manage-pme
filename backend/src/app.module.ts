@@ -15,6 +15,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { CompanyModule } from './company/company.module';
 import { CurrencyModule } from './currency/currency.module';
+import { CreditsModule } from './credits/credits.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { CurrencyModule } from './currency/currency.module';
     PurchasesModule,
     CompanyModule,
     CurrencyModule,
+    CreditsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

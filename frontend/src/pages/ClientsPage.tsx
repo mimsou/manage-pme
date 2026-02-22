@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit, Trash2, User, Building2, Mail, Phone, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Edit, Trash2, User, Building2, Mail, Phone, MapPin, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -268,6 +269,13 @@ export default function ClientsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <Link
+                            to={`/credits?clientId=${client.id}`}
+                            className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
+                            title="Voir le crédit client"
+                          >
+                            <Wallet className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                          </Link>
                           {isAdminOrManager && (
                             <>
                               <button

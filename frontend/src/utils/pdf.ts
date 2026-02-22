@@ -273,6 +273,19 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   doc.text('TOTAL TTC:', totalsX, yPos, { align: 'right' });
   doc.text(`${sale.total.toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
 
+  // Tampon IMPAYÉ / PAYÉ selon montant payé
+  const paid = Number(sale.amountPaid ?? 0);
+  const totalNum = Number(sale.total);
+  const isPaid = totalNum <= 0 || paid >= totalNum - 0.01;
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  const stampX = pageWidth - 55;
+  const stampY = 50;
+  doc.setTextColor(isPaid ? 0 : 200, isPaid ? 140 : 0, isPaid ? 0 : 0);
+  doc.rect(stampX - 2, stampY - 8, 38, 14, 'S');
+  doc.text(isPaid ? 'PAYÉ' : 'IMPAYÉ', stampX + 17, stampY + 2, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
   // Paiement
   yPos += 10;
   doc.setFontSize(10);
@@ -649,20 +662,111 @@ export async function generateTicket(sale: Sale, company?: CompanyInfo | null) {
 }
 
 function getPaymentMethodLabelInvoice(method: PaymentMethod): string {
-  const labels = {
+  const labels: Record<string, string> = {
     [PaymentMethod.CASH]: 'Espèces',
     [PaymentMethod.CARD]: 'Carte bancaire',
     [PaymentMethod.MIXED]: 'Mixte',
+    [PaymentMethod.CREDIT]: 'À crédit',
   };
-  return labels[method] || method;
+  return labels[method] ?? method;
 }
 
 function getPaymentMethodLabelTicket(method: PaymentMethod): string {
-  const labels = {
+  const labels: Record<string, string> = {
     [PaymentMethod.CASH]: 'Espèces',
     [PaymentMethod.CARD]: 'Carte bancaire',
     [PaymentMethod.MIXED]: 'Mixte',
+    [PaymentMethod.CREDIT]: 'À crédit',
   };
-  return labels[method] || method;
+  return labels[method] ?? method;
+}
+
+/**
+ * Génère le PDF "Demande de crédit" / "Accord de crédit" pour une vente à crédit :
+ * référence facture, client, montant, échéance, conditions, zone signature client.
+ */
+export async function generateCreditRequest(sale: Sale, company?: CompanyInfo | null) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const companyDisplay = getCompanyDisplay(company);
+  const currencyLabel = getSaleCurrencyLabel(sale);
+
+  let yPos = 25;
+
+  if (companyDisplay.logo) {
+    try {
+      const { width: natW, height: natH } = await getImageDimensions(companyDisplay.logo);
+      const { w: logoW, h: logoH } = fitInBox(natW, natH, INVOICE_LOGO_MAX_W, INVOICE_LOGO_MAX_H);
+      const logoX = (pageWidth - logoW) / 2;
+      doc.addImage(companyDisplay.logo, companyDisplay.logo.includes('png') ? 'PNG' : 'JPEG', logoX, 12, logoW, logoH);
+      yPos = 18 + logoH + 12;
+    } catch (_) {}
+  }
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DEMANDE DE CRÉDIT / ACCORD DE CRÉDIT', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 14;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Référence facture: ${sale.invoiceNumber || sale.ticketNumber || sale.id}`, 20, yPos);
+  yPos += 6;
+  doc.text(`Date de la vente: ${new Date(sale.createdAt).toLocaleDateString('fr-FR')}`, 20, yPos);
+  yPos += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Client:', 20, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  if (sale.client) {
+    const name =
+      sale.client.type === ClientType.SOCIETE && sale.client.companyName
+        ? sale.client.companyName
+        : `${sale.client.firstName || ''} ${sale.client.lastName || ''}`.trim() || 'Particulier';
+    doc.text(name, 20, yPos);
+    yPos += 5;
+    if (sale.client.address) {
+      doc.text(sale.client.address, 20, yPos);
+      yPos += 5;
+    }
+    if (sale.client.phone) doc.text(`Tél: ${sale.client.phone}`, 20, yPos);
+  } else {
+    doc.text('Particulier', 20, yPos);
+  }
+  yPos += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Montant total dû: ${sale.total.toFixed(2)} ${currencyLabel}`, 20, yPos);
+  yPos += 8;
+  const due = sale.dueDate ? new Date(sale.dueDate).toLocaleDateString('fr-FR') : 'À définir';
+  doc.text(`Échéance convenue: ${due}`, 20, yPos);
+  yPos += 12;
+
+  doc.setFontSize(9);
+  doc.text(
+    'Le client s\'engage à régler la somme indiquée ci-dessus à la date d\'échéance. En cas de retard, des pénalités pourront être appliquées selon les conditions en vigueur.',
+    20,
+    yPos,
+    { maxWidth: pageWidth - 40 },
+  );
+  yPos += 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Signature du client (précédée de la mention « Lu et approuvé »):', 20, yPos);
+  yPos += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.rect(20, yPos, pageWidth - 40, 25);
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Signature et date', 24, yPos + 14);
+  doc.setTextColor(0, 0, 0);
+  yPos += 35;
+
+  doc.setFontSize(8);
+  doc.text(`Document généré le ${new Date().toLocaleDateString('fr-FR')} - ${companyDisplay.name || ''}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+  doc.save(`demande-credit-${sale.invoiceNumber || sale.id}.pdf`);
 }
 

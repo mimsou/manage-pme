@@ -36,6 +36,17 @@ const PRODUCT_UNITS = [
   { value: 'sachet', label: 'sachet' },
 ];
 
+/** Génère un préfixe SKU à partir du nom (même logique que le backend pour produit simple). */
+function generateSkuFromName(name: string): string {
+  if (!name || !name.trim()) return '';
+  const s = name
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .trim()
+    .substring(0, 2)
+    .toUpperCase();
+  return s || 'PR';
+}
+
 const productSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
   sku: z.string().optional(),
@@ -108,6 +119,7 @@ export default function ProductsPage() {
     formState: { errors, isSubmitting },
     reset,
     watch,
+    setValue,
   } = useForm<CreateProductDto>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -146,10 +158,18 @@ export default function ProductsPage() {
   const margin = salePrice - purchasePrice;
   const marginPercent = purchasePrice > 0 ? ((margin / purchasePrice) * 100).toFixed(2) : '0';
 
+  const watchedName = watch('name');
+
   useEffect(() => {
     loadProducts();
     loadCategories();
   }, [page, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    if (!editingProduct && !useVariants && isModalOpen) {
+      setValue('sku', generateSkuFromName(watchedName || ''));
+    }
+  }, [watchedName, editingProduct, useVariants, isModalOpen, setValue]);
 
   // Raccourcis clavier
   useEffect(() => {
@@ -171,7 +191,6 @@ export default function ProductsPage() {
               description: watch('description'),
               categoryId,
               sku: '',
-              barcode: watch('barcode'),
               purchasePrice: 0,
               salePrice: 0,
               stockMin: 0,
@@ -258,7 +277,6 @@ export default function ProductsPage() {
               salePrice: v.salePrice!,
               stockCurrent: v.stockCurrent,
               stockMin: v.stockMin,
-              barcode: v.barcode,
             })),
           });
           toast.success(`${createdProducts.length} produit(s) créé(s) avec succès`);
@@ -293,7 +311,6 @@ export default function ProductsPage() {
     reset({
       name: product.name,
       sku: product.sku,
-      barcode: product.barcode || '',
       categoryId: product.categoryId,
       purchasePrice: product.purchasePrice,
       salePrice: product.salePrice,
@@ -648,7 +665,6 @@ export default function ProductsPage() {
                     description: watch('description'),
                     categoryId,
                     sku: '',
-                    barcode: watch('barcode'),
                     unit: watch('unit') || 'pièce',
                     purchasePrice: 0,
                     salePrice: 0,
@@ -698,7 +714,6 @@ export default function ProductsPage() {
                 description: watch('description'),
                 categoryId,
                 sku: '',
-                barcode: watch('barcode'),
                 unit: watch('unit') || 'pièce',
                 purchasePrice: 0,
                 salePrice: 0,
@@ -771,12 +786,18 @@ export default function ProductsPage() {
                 />
               </div>
               {!useVariants && (
-                <Input
-                  label="SKU *"
-                  {...register('sku')}
-                  error={errors.sku?.message}
-                  placeholder="Ex: TS-001, PAN-001..."
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">
+                    SKU
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    {...register('sku')}
+                    className="w-full px-4 py-2.5 border rounded-lg bg-surface border-border-default text-sm text-text-muted cursor-not-allowed"
+                    placeholder="Généré à partir du nom"
+                  />
+                </div>
               )}
             </div>
 
@@ -814,13 +835,18 @@ export default function ProductsPage() {
                   <p className="mt-1 text-sm text-danger">{errors.categoryId.message}</p>
                 )}
               </div>
-              {!useVariants && (
-                <Input
-                  label="Code-barres (EAN-13)"
-                  {...register('barcode')}
-                  error={errors.barcode?.message}
-                  placeholder="Optionnel"
-                />
+              {!useVariants && editingProduct && (
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">
+                    Code-barres
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={editingProduct.barcode || editingProduct.sku || ''}
+                    className="w-full px-4 py-2.5 border rounded-lg bg-surface border-border-default text-sm text-text-muted cursor-default"
+                  />
+                </div>
               )}
             </div>
 

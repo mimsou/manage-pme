@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { Building2, Users, ArrowLeft, Coins } from 'lucide-react';
+import { Building2, Users, ArrowLeft, Coins, Sliders } from 'lucide-react';
 
 export default function ManagementLayout() {
   const location = useLocation();
@@ -14,6 +14,7 @@ export default function ManagementLayout() {
     { name: 'Identité de la société', href: '/management/company', icon: Building2 },
     { name: 'Devise et change', href: '/management/currency', icon: Coins },
     { name: 'Utilisateurs', href: '/management/users', icon: Users },
+    { name: 'Paramétrage', href: '/management/settings', icon: Sliders },
   ];
 
   const isActive = (href: string) => location.pathname === href;

@@ -114,10 +114,21 @@ export class UpdateProductDto {
   @Min(0)
   stockMin?: number;
 
+  @ApiProperty({ required: false })
+  @IsInt()
+  @IsOptional()
+  @Min(0)
+  stockCurrent?: number;
+
   @ApiProperty({ required: false, description: 'Unité de vente (ex: pièce, kg, m, L)' })
   @IsString()
   @IsOptional()
   unit?: string;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  hasVariants?: boolean;
 
   @ApiProperty({ required: false })
   @IsBoolean()

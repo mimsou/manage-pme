@@ -13,9 +13,11 @@ import {
   Warehouse,
   ClipboardList,
   TrendingUp,
+  Wallet,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { creditsApi } from '../api/credits';
 
 type DockItem = { id: string; href: string; label: string; icon: LucideIcon; color: string };
 const DOCK_MODULES: Array<DockItem | { separator: true }> = [
@@ -27,6 +29,7 @@ const DOCK_MODULES: Array<DockItem | { separator: true }> = [
   { id: 'sales', href: '/sales', label: 'Ventes', icon: TrendingUp, color: '#10B981' },
   { separator: true },
   { id: 'clients', href: '/clients', label: 'Clients', icon: Users, color: '#F472B6' },
+  { id: 'credits', href: '/credits', label: 'Crédits clients', icon: Wallet, color: '#F59E0B' },
   { id: 'suppliers', href: '/suppliers', label: 'Fournisseurs', icon: Truck, color: '#FB923C' },
   { id: 'invoices', href: '/entries', label: 'Factures', icon: FileText, color: '#34D399' },
   { separator: true },
@@ -50,6 +53,7 @@ export function Dock() {
   const { user, logout } = useAuthStore();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [creditOverdueCount, setCreditOverdueCount] = useState<number>(0);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isManagement = location.pathname.startsWith('/management');
@@ -60,6 +64,14 @@ export function Dock() {
     };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
+  }, []);
+
+  useEffect(() => {
+    creditsApi.getOverdueCount().then((res) => setCreditOverdueCount(res.count)).catch(() => setCreditOverdueCount(0));
+    const interval = setInterval(() => {
+      creditsApi.getOverdueCount().then((res) => setCreditOverdueCount(res.count)).catch(() => setCreditOverdueCount(0));
+    }, 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const getSize = (index: number): number => {
@@ -154,7 +166,7 @@ export function Dock() {
                 <motion.div
                   layout
                   transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-                  className="flex items-center justify-center flex-shrink-0 rounded-[10px]"
+                  className="relative flex items-center justify-center flex-shrink-0 rounded-[10px]"
                   style={{
                     width: size,
                     height: size,
@@ -169,6 +181,14 @@ export function Dock() {
                     size={18}
                     style={{ color: item.color }}
                   />
+                  {item.id === 'credits' && creditOverdueCount > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-danger border-2 border-[rgba(20,20,28,0.9)]"
+                      style={{ padding: '0 4px' }}
+                    >
+                      {creditOverdueCount > 99 ? '99+' : creditOverdueCount}
+                    </span>
+                  )}
                 </motion.div>
                 {isActive && (
                   <div

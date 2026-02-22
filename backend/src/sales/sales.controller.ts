@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/sale.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
+import { RecordPaymentDto } from './dto/record-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SaleType } from '@prisma/client';
 
@@ -74,6 +75,12 @@ export class SalesController {
   @ApiOperation({ summary: 'Create credit note (avoir) for sale' })
   async createRefund(@Param('id') id: string, @Body() dto: CreateRefundDto, @Request() req) {
     return this.salesService.createRefund(id, dto, req.user.id);
+  }
+
+  @Post(':id/payment')
+  @ApiOperation({ summary: 'Record client payment (reduce credit)' })
+  async recordPayment(@Param('id') id: string, @Body() dto: RecordPaymentDto) {
+    return this.salesService.recordPayment(id, dto.amount);
   }
 }
 

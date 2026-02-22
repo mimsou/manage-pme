@@ -11,7 +11,12 @@ import {
   Filter,
   X,
   BarChart3,
+  Wallet,
+  Users,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 function getCurrencyLabel(code: string): string {
@@ -193,7 +198,7 @@ export default function DashboardPage() {
           gridTemplateColumns: 'repeat(12, 1fr)',
           gridTemplateAreas: `
             "k1 k1 k1 k2 k2 k2 k3 k3 k3 k4 k4 k4"
-            "chart chart chart chart chart chart chart chart alerts alerts alerts alerts"
+            "chart chart chart chart chart chart credit credit credit credit alerts alerts"
             "top top top top top recent recent recent recent cash cash cash"
           `,
         }}
@@ -230,6 +235,65 @@ export default function DashboardPage() {
             icon={ArrowDownCircle}
             iconColor="#3B82F6"
           />
+        </div>
+
+        <div style={{ gridArea: 'credit' }}>
+          <div
+            className="rounded-[10px] border border-[#2A2A38] overflow-hidden h-full flex flex-col"
+            style={{ background: '#1E1E28', padding: 16 }}
+          >
+            <div className="flex items-center justify-between mb-3" style={{ gap: 12 }}>
+              <h3 className="section-heading" style={{ fontSize: 13 }}>Crédits clients</h3>
+              <Link
+                to="/credits"
+                className="text-[11px] font-medium text-brand hover:underline"
+              >
+                Voir tout
+              </Link>
+            </div>
+            <div className="space-y-3 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary text-[13px] flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-amber-500" />
+                  Total à recevoir
+                </span>
+                <span className="font-mono font-bold text-text-primary">
+                  {(stats?.creditStats?.totalOutstanding ?? 0).toFixed(2)} {currencySymbol}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary text-[13px] flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-text-muted" />
+                  Clients concernés
+                </span>
+                <span className="font-mono font-semibold text-text-primary">{stats?.creditStats?.clientCount ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary text-[13px] flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-text-muted" />
+                  Factures impayées
+                </span>
+                <span className="font-mono font-semibold text-text-primary">{stats?.creditStats?.unpaidInvoiceCount ?? 0}</span>
+              </div>
+              <div className="border-t border-border-subtle pt-2 mt-2 space-y-1.5">
+                <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider mb-1.5">Ancienneté</p>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-text-muted">À l&apos;échéance</span>
+                  <span className="font-mono text-text-primary">{(stats?.creditStats?.byAging?.current ?? 0).toFixed(2)} {currencySymbol}</span>
+                </div>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-text-muted">1–60 j. retard</span>
+                  <span className="font-mono text-amber-500">{(stats?.creditStats?.byAging?.overdue31_60 ?? 0).toFixed(2)} {currencySymbol}</span>
+                </div>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-text-muted flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-danger" /> 60+ j. retard
+                  </span>
+                  <span className="font-mono text-danger">{(stats?.creditStats?.byAging?.overdue60Plus ?? 0).toFixed(2)} {currencySymbol}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style={{ gridArea: 'chart' }}>

@@ -78,45 +78,64 @@ export class SalesService {
     const defaultCurrency = company?.defaultCurrencyCode ?? 'TND';
     const currencyCode = data.currencyCode?.trim() || defaultCurrency;
 
-    // Créer la vente
-    const sale = await this.prisma.sale.create({
-      data: {
-        clientId: data.clientId,
-        userId,
-        cashRegisterId: data.cashRegisterId,
-        type: data.type,
-        status: SaleStatus.COMPLETED,
-        ticketNumber,
-        invoiceNumber,
-        subtotal: finalSubtotal,
-        discount,
-        tax,
-        total,
-        paymentMethod: data.paymentMethod,
-        cashAmount: data.cashAmount ? new Decimal(data.cashAmount) : null,
-        cardAmount: data.cardAmount ? new Decimal(data.cardAmount) : null,
-        margin: totalMargin,
-        currencyCode,
-        items: {
-          create: saleItems,
-        },
-      },
-      include: {
-        client: true,
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
+    const isCreditSale = (data.paymentMethod as string) === 'CREDIT';
+    const cashAmt = !isCreditSale && data.cashAmount != null ? new Decimal(data.cashAmount) : new Decimal(0);
+    const cardAmt = !isCreditSale && data.cardAmount != null ? new Decimal(data.cardAmount) : new Decimal(0);
+    const amountPaid = isCreditSale ? new Decimal(0) : cashAmt.add(cardAmt);
+    const dueDate = data.dueDate ? new Date(data.dueDate) : (data.type === SaleType.INVOICE ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null);
+
+    const paymentMethodValue = isCreditSale ? 'CREDIT' : data.paymentMethod;
+    let sale;
+    try {
+      sale = await this.prisma.sale.create({
+        data: {
+          clientId: data.clientId,
+          userId,
+          cashRegisterId: data.cashRegisterId,
+          type: data.type,
+          status: SaleStatus.COMPLETED,
+          ticketNumber,
+          invoiceNumber,
+          subtotal: finalSubtotal,
+          discount,
+          tax,
+          total,
+          amountPaid,
+          dueDate,
+          paymentMethod: paymentMethodValue as PaymentMethod,
+          cashAmount: !isCreditSale && data.cashAmount != null ? cashAmt : null,
+          cardAmount: !isCreditSale && data.cardAmount != null ? cardAmt : null,
+          margin: totalMargin,
+          currencyCode,
+          items: {
+            create: saleItems,
           },
         },
-        items: {
-          include: {
-            product: true,
+        include: {
+          client: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (isCreditSale && (msg.includes('PaymentMethod') || msg.includes('enum') || msg.includes('invalid input value'))) {
+        throw new BadRequestException(
+          'La valeur CREDIT pour le paiement n\'est pas reconnue en base. Exécutez la migration : npx prisma migrate deploy (dans le dossier backend).'
+        );
+      }
+      throw err;
+    }
 
     // Mettre à jour le stock et créer les mouvements de stock
     for (const item of data.items) {
@@ -238,6 +257,33 @@ export class SalesService {
     }
 
     return sale;
+  }
+
+  /** Enregistrer un règlement (crédit client) sur une vente */
+  async recordPayment(id: string, amount: number) {
+    const sale = await this.prisma.sale.findUnique({
+      where: { id },
+      include: { client: true, items: { include: { product: true } } },
+    });
+    if (!sale) throw new NotFoundException('Vente non trouvée');
+    if (sale.status === SaleStatus.CANCELLED) {
+      throw new BadRequestException('Impossible d\'enregistrer un règlement sur une vente annulée.');
+    }
+    const total = Number(sale.total);
+    const currentPaid = Number(sale.amountPaid);
+    const due = total - currentPaid;
+    if (due <= 0) throw new BadRequestException('Cette vente est déjà entièrement réglée.');
+    const paymentAmount = Math.min(amount, due);
+    const newAmountPaid = new Decimal(currentPaid + paymentAmount);
+    return this.prisma.sale.update({
+      where: { id },
+      data: { amountPaid: newAmountPaid },
+      include: {
+        client: true,
+        user: { select: { id: true, firstName: true, lastName: true } },
+        items: { include: { product: true } },
+      },
+    });
   }
 
   async cancel(id: string, userId: string) {

@@ -26,19 +26,17 @@ export class DashboardController {
 
   @Get('sales-chart')
   @ApiOperation({ summary: 'Get sales chart data' })
-  @ApiQuery({ name: 'startDate', required: true })
-  @ApiQuery({ name: 'endDate', required: true })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'groupBy', required: false, enum: ['day', 'week', 'month'] })
   async getSalesChart(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('groupBy') groupBy?: 'day' | 'week' | 'month',
   ) {
-    return this.dashboardService.getSalesChart(
-      new Date(startDate),
-      new Date(endDate),
-      groupBy,
-    );
+    const start = startDate ? new Date(startDate) : new Date(NaN);
+    const end = endDate ? new Date(endDate) : new Date(NaN);
+    return this.dashboardService.getSalesChart(start, end, groupBy);
   }
 }
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { Eye, X, Filter, Receipt, FileText, Printer, RotateCcw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Eye, X, Filter, Receipt, FileText, Printer, RotateCcw, Wallet, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -12,9 +13,67 @@ import { clientsApi } from '@/api/clients';
 import { Sale, SaleType, SaleStatus, PaymentMethod } from '@/types/sale';
 import { Client } from '@/types/client';
 import { useAuthStore } from '@/stores/authStore';
-import { generateInvoice, generateTicket, generateAvoir, type CompanyInfo } from '@/utils/pdf';
+import { generateInvoice, generateTicket, generateAvoir, generateCreditRequest, type CompanyInfo } from '@/utils/pdf';
 import { apiClient } from '@/api/client';
 import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
+
+function PaymentRecordBlock({
+  sale,
+  onRecorded,
+  currencyLabel,
+  toDefault,
+}: {
+  sale: Sale;
+  onRecorded: () => void;
+  currencyLabel: string;
+  toDefault: (amount: number, currencyCode?: string | null) => number;
+}) {
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const restant = Number(sale.total) - Number(sale.amountPaid ?? 0);
+
+  const handleRecord = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Montant invalide');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await salesApi.recordPayment(sale.id, amount);
+      toast.success('Paiement enregistré. Vous pouvez réimprimer la facture avec le tampon « Payé ».');
+      setPaymentAmount('');
+      onRecorded();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="border-t pt-4">
+      <label className="text-sm font-medium text-text-muted mb-2 block">
+        Enregistrer un paiement
+      </label>
+      <div className="flex flex-wrap items-end gap-2">
+        <Input
+          type="number"
+          step="0.01"
+          min={0}
+          max={restant}
+          placeholder={`Max ${toDefault(restant, sale.currencyCode).toFixed(2)} ${currencyLabel}`}
+          value={paymentAmount}
+          onChange={(e) => setPaymentAmount(e.target.value)}
+          className="w-32"
+        />
+        <Button size="sm" onClick={handleRecord} disabled={submitting}>
+          {submitting ? 'Enregistrement...' : 'Valider le paiement'}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function SalesContent() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -117,12 +176,25 @@ export function SalesContent() {
   };
 
   const getPaymentMethodLabel = (method: PaymentMethod) => {
-    const labels = {
+    const labels: Record<string, string> = {
       [PaymentMethod.CASH]: 'Espèces',
       [PaymentMethod.CARD]: 'Carte',
       [PaymentMethod.MIXED]: 'Mixte',
+      [PaymentMethod.CREDIT]: 'À crédit',
     };
-    return labels[method] || method;
+    return labels[method] ?? method;
+  };
+
+  const isCreditOrUnpaid = (sale: Sale) =>
+    sale.client && (sale.paymentMethod === PaymentMethod.CREDIT || (Number(sale.amountPaid ?? 0) < Number(sale.total) - 0.01));
+
+  const handlePrintCreditRequest = async (sale: Sale) => {
+    try {
+      await generateCreditRequest(sale, company);
+      toast.success('Demande de crédit générée');
+    } catch (error) {
+      toast.error('Erreur lors de la génération du document');
+    }
   };
 
   const getStatusBadgeStyle = (status: SaleStatus): React.CSSProperties => {
@@ -225,13 +297,21 @@ export function SalesContent() {
     <div>
       <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
         <h1 className="page-title">Ventes</h1>
-        <Button variant="outline" className="btn" onClick={() => setIsFilterModalOpen(true)}>
+        <div className="flex items-center gap-2">
+          <Link to="/credits">
+            <Button variant="outline" className="btn">
+              <Wallet className="w-3.5 h-3.5 mr-1.5" />
+              Crédits clients
+            </Button>
+          </Link>
+          <Button variant="outline" className="btn" onClick={() => setIsFilterModalOpen(true)}>
           <Filter className="w-3.5 h-3.5 mr-1.5" />
           Filtres
           {hasActiveFilters && (
             <span className="ml-1.5 bg-brand text-white rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase">Actifs</span>
           )}
         </Button>
+        </div>
       </div>
 
       <div
@@ -349,6 +429,16 @@ export function SalesContent() {
                           >
                             <Printer className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
                           </button>
+                          {isCreditOrUnpaid(sale) && (
+                            <button
+                              type="button"
+                              className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-text-muted hover:bg-[rgba(255,255,255,0.06)] hover:text-text-primary transition-colors"
+                              onClick={() => handlePrintCreditRequest(sale)}
+                              title="Imprimer demande de crédit"
+                            >
+                              <FileSignature className="w-3.5 h-3.5" style={{ width: 14, height: 14 }} />
+                            </button>
+                          )}
                           {sale.status === SaleStatus.COMPLETED && (
                             <button
                               type="button"
@@ -454,13 +544,21 @@ export function SalesContent() {
               Fermer
             </Button>
             {selectedSale && (
-              <Button
-                variant="outline"
-                onClick={() => handlePrint(selectedSale)}
-              >
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimer {selectedSale.type === SaleType.INVOICE ? 'Facture' : 'Ticket'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePrint(selectedSale)}
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Imprimer {selectedSale.type === SaleType.INVOICE ? 'Facture' : 'Ticket'}
+                </Button>
+                {isCreditOrUnpaid(selectedSale) && (
+                  <Button variant="outline" onClick={() => handlePrintCreditRequest(selectedSale)}>
+                    <FileSignature className="w-4 h-4 mr-2" />
+                    Demande de crédit
+                  </Button>
+                )}
+              </>
             )}
             {selectedSale?.status === SaleStatus.COMPLETED && (
               <>
@@ -618,12 +716,26 @@ export function SalesContent() {
             </div>
 
             {/* Paiement */}
-            {(selectedSale.cashAmount || selectedSale.cardAmount) && (
+            {(selectedSale.cashAmount || selectedSale.cardAmount || selectedSale.paymentMethod === PaymentMethod.CREDIT) && (
               <div className="border-t pt-4">
                 <label className="text-sm font-medium text-text-muted mb-2 block">
                   Détails du paiement
                 </label>
                 <div className="space-y-1 text-sm">
+                  {Number(selectedSale.amountPaid ?? 0) >= 0 && (
+                    <div className="flex justify-between">
+                      <span>Montant payé:</span>
+                      <span>{toDefault(Number(selectedSale.amountPaid ?? 0), selectedSale.currencyCode).toFixed(2)} {currencyLabel}</span>
+                    </div>
+                  )}
+                  {Number(selectedSale.amountPaid ?? 0) < Number(selectedSale.total) - 0.01 && (
+                    <div className="flex justify-between">
+                      <span>Restant dû:</span>
+                      <span className="text-amber-500 font-medium">
+                        {toDefault(Number(selectedSale.total) - Number(selectedSale.amountPaid ?? 0), selectedSale.currencyCode).toFixed(2)} {currencyLabel}
+                      </span>
+                    </div>
+                  )}
                   {selectedSale.cashAmount && (
                     <div className="flex justify-between">
                       <span>Espèces:</span>
@@ -638,6 +750,20 @@ export function SalesContent() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Enregistrer un paiement (vente à crédit / impayée) */}
+            {selectedSale.status === SaleStatus.COMPLETED && Number(selectedSale.amountPaid ?? 0) < Number(selectedSale.total) - 0.01 && (
+              <PaymentRecordBlock
+                sale={selectedSale}
+                onRecorded={async () => {
+                  const updated = await salesApi.getById(selectedSale.id);
+                  setSelectedSale(updated);
+                  loadSales();
+                }}
+                currencyLabel={currencyLabel}
+                toDefault={toDefault}
+              />
             )}
 
             {/* Historique des avoirs */}

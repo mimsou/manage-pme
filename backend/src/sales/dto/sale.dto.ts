@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsUUID,
   IsEnum,
+  IsIn,
   IsNumber,
   IsArray,
   ValidateNested,
@@ -11,6 +12,9 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { SaleType, PaymentMethod } from '@prisma/client';
+
+/** Valeurs acceptées pour paymentMethod (liste explicite pour inclure CREDIT). */
+const PAYMENT_METHOD_VALUES = ['CASH', 'CARD', 'MIXED', 'CREDIT', 'OTHER'] as const;
 
 class SaleItemDto {
   @ApiProperty()
@@ -66,8 +70,8 @@ export class CreateSaleDto {
   @Min(0)
   discount?: number;
 
-  @ApiProperty({ enum: PaymentMethod })
-  @IsEnum(PaymentMethod)
+  @ApiProperty({ enum: [...PAYMENT_METHOD_VALUES], description: 'CASH, CARD, MIXED, CREDIT (facture impayée), OTHER' })
+  @IsIn([...PAYMENT_METHOD_VALUES], { message: `paymentMethod must be one of: ${PAYMENT_METHOD_VALUES.join(', ')}` })
   paymentMethod: PaymentMethod;
 
   @ApiProperty({ required: false })
@@ -83,6 +87,10 @@ export class CreateSaleDto {
   @IsOptional()
   @Min(0)
   cardAmount?: number;
+
+  @ApiProperty({ required: false, description: 'Échéance (facture). Si absent, facture = +30j.' })
+  @IsOptional()
+  dueDate?: string;
 
   @ApiProperty({ required: false, description: 'Code devise de la facture (ex: TND, EUR). Si absent, utilise la devise par défaut.' })
   @IsString()

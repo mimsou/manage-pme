@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Search, Plus, Minus, ShoppingCart, X, Barcode, User, Receipt, Package, Banknote, CreditCard, Wallet } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, X, Barcode, User, Receipt, Package, Banknote, CreditCard, Wallet, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -12,10 +12,12 @@ import { categoriesApi } from '@/api/categories';
 import { currencyApi } from '@/api/currency';
 import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 import { Product, Category } from '@/types/product';
-import { SaleType, PaymentMethod, CreateSaleDto } from '@/types/sale';
+import { SaleType, PaymentMethod, CreateSaleDto, Sale } from '@/types/sale';
 import { Client } from '@/types/client';
 import { Html5Qrcode } from 'html5-qrcode';
 import { SalesContent } from '@/pages/SalesPage';
+import { generateCreditRequest, generateInvoice, type CompanyInfo } from '@/utils/pdf';
+import { apiClient } from '@/api/client';
 
 interface CartItem {
   product: Product;
@@ -35,6 +37,8 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  /** Dans la modale : "comptant" = payer maintenant (espèces/carte/mixte), "credit" = demande de crédit, facture impayée */
+  const [paymentChoice, setPaymentChoice] = useState<'comptant' | 'credit'>('comptant');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [cashAmount, setCashAmount] = useState(0);
   const [cardAmount, setCardAmount] = useState(0);
@@ -44,6 +48,8 @@ export default function POSPage() {
   const [currencies, setCurrencies] = useState<{ code: string; symbol: string | null; name: string }[]>([]);
   const [defaultCurrencyCode, setDefaultCurrencyCode] = useState<string>('TND');
   const [saleCurrencyCode, setSaleCurrencyCode] = useState<string>('');
+  const [lastCreatedCreditSale, setLastCreatedCreditSale] = useState<Sale | null>(null);
+  const [isCreditPrintModalOpen, setIsCreditPrintModalOpen] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { currencyLabel, toDefault } = useDefaultCurrency();
 
@@ -214,7 +220,13 @@ export default function POSPage() {
       return;
     }
 
-    if (paymentMethod === PaymentMethod.CASH) {
+    const isCredit = paymentChoice === 'credit';
+    if (isCredit) {
+      if (!selectedClient) {
+        toast.error('Veuillez sélectionner un client pour une demande de crédit');
+        return;
+      }
+    } else if (paymentMethod === PaymentMethod.CASH) {
       if (cashAmount < total) {
         toast.error('Le montant cash est insuffisant');
         return;
@@ -246,21 +258,27 @@ export default function POSPage() {
           unitPrice: item.unitPrice,
           discount: item.discount,
         })),
-        paymentMethod,
-        cashAmount: paymentMethod === PaymentMethod.CASH || paymentMethod === PaymentMethod.MIXED ? cashAmount : undefined,
-        cardAmount: paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.MIXED ? cardAmount : undefined,
+        paymentMethod: isCredit ? PaymentMethod.CREDIT : paymentMethod,
+        cashAmount: isCredit ? undefined : (paymentMethod === PaymentMethod.CASH || paymentMethod === PaymentMethod.MIXED ? cashAmount : undefined),
+        cardAmount: isCredit ? undefined : (paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.MIXED ? cardAmount : undefined),
       };
 
-      await salesApi.create(saleData);
-      toast.success('Vente enregistrée avec succès');
-      
-      // Reset
+      const created = await salesApi.create(saleData);
       setCart([]);
       setSelectedClient(null);
       setPaymentMethod(PaymentMethod.CASH);
       setCashAmount(0);
       setCardAmount(0);
+      setPaymentChoice('comptant');
       setIsPaymentModalOpen(false);
+
+      if (isCredit) {
+        setLastCreatedCreditSale(created);
+        setIsCreditPrintModalOpen(true);
+        toast.success('Vente à crédit enregistrée');
+      } else {
+        toast.success('Vente enregistrée avec succès');
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement de la vente');
     }
@@ -413,7 +431,18 @@ export default function POSPage() {
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="font-mono text-[13px] text-text-primary w-6 text-center">{item.quantity}{item.product.unit ? ` ${item.product.unit}` : ''}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!Number.isFinite(v) || v < 0) return;
+                            updateQuantity(item.product.id, v);
+                          }}
+                          className="w-12 h-[22px] rounded text-center font-mono text-[13px] text-text-primary bg-card border border-border-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                        />
+                        {item.product.unit && <span className="text-[11px] text-text-muted">{item.product.unit}</span>}
                         <button
                           type="button"
                           className="w-[22px] h-[22px] rounded flex items-center justify-center text-text-muted hover:bg-elevated hover:text-text-primary transition-colors"
@@ -451,36 +480,23 @@ export default function POSPage() {
           )}
         </div>
 
-        {/* Right panel: bg-surface — payment + CHARGE */}
+        {/* Right panel: un seul bouton Payer — le choix comptant / crédit se fait dans la modale */}
         <div className="flex flex-col overflow-hidden p-4" style={{ background: '#17171D' }}>
           <h2 className="section-heading mb-3 text-[13px]">Paiement</h2>
-          <div className="grid grid-cols-2 gap-2 mb-4" style={{ gap: 8 }}>
-            {[
-              { value: PaymentMethod.CASH, label: 'Espèces', Icon: Banknote },
-              { value: PaymentMethod.CARD, label: 'Carte', Icon: CreditCard },
-              { value: PaymentMethod.MIXED, label: 'Mixte', Icon: Wallet },
-            ].map(({ value, label, Icon }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => { setPaymentMethod(value); setCashAmount(0); setCardAmount(0); }}
-                className={`flex flex-col items-center justify-center rounded-[10px] border transition-all duration-200 ${
-                  paymentMethod === value
-                    ? 'border-brand bg-brand/10 text-brand shadow-[0_0_0_1px_rgba(99,102,241,0.2)]'
-                    : 'border-[#2A2A38] bg-card text-text-secondary hover:border-[#363648]'
-                }`}
-                style={{ height: 56, background: paymentMethod === value ? 'rgba(99,102,241,0.1)' : '#1E1E28' }}
-              >
-                <Icon className="w-[18px] h-[18px] mb-1" />
-                <span className="text-[11px] font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
+          <p className="text-[11px] text-text-muted mb-3">Comptant (espèces, carte, mixte) ou demande de crédit (facture impayée).</p>
           <button
             type="button"
             className="mt-auto w-full text-white bg-success hover:bg-[#059669] hover:shadow-[0_0_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all duration-200"
             style={{ height: 52, fontSize: 15, fontWeight: 700, borderRadius: 10, boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}
-            onClick={() => cart.length > 0 && setIsPaymentModalOpen(true)}
+            onClick={() => {
+              if (cart.length > 0) {
+                setPaymentChoice('comptant');
+                setPaymentMethod(PaymentMethod.CASH);
+                setCashAmount(0);
+                setCardAmount(0);
+                setIsPaymentModalOpen(true);
+              }
+            }}
             disabled={cart.length === 0}
           >
             Payer (F4)
@@ -525,22 +541,57 @@ export default function POSPage() {
         </div>
       </Modal>
 
-      {/* Modal Paiement */}
+      {/* Modal Paiement : choix Payer comptant OU Demande de crédit */}
       <Modal
         isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
+        onClose={() => { setIsPaymentModalOpen(false); setPaymentChoice('comptant'); }}
         title="Paiement"
         size="md"
         footer={
           <>
-            <Button variant="outline" onClick={() => setIsPaymentModalOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsPaymentModalOpen(false); setPaymentChoice('comptant'); }}>
               Annuler
             </Button>
-            <Button onClick={handlePayment}>Valider le paiement</Button>
+            <Button onClick={handlePayment}>
+              {paymentChoice === 'credit' ? 'Enregistrer la demande de crédit' : 'Valider le paiement'}
+            </Button>
           </>
         }
       >
         <div className="space-y-4">
+          {/* Choix : Payer comptant ou Demande de crédit */}
+          <div>
+            <label className="label-caption block mb-2">Comment régler cette vente ?</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setPaymentChoice('comptant'); setPaymentMethod(PaymentMethod.CASH); setCashAmount(0); setCardAmount(0); }}
+                className={`flex flex-col items-center justify-center rounded-[10px] border py-4 transition-all ${
+                  paymentChoice === 'comptant'
+                    ? 'border-brand bg-brand/10 text-brand'
+                    : 'border-[#2A2A38] bg-card text-text-secondary hover:border-[#363648]'
+                }`}
+              >
+                <Wallet className="w-6 h-6 mb-1" />
+                <span className="text-[13px] font-medium">Payer comptant</span>
+                <span className="text-[11px] opacity-80 mt-0.5">Espèces, carte ou mixte</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentChoice('credit')}
+                className={`flex flex-col items-center justify-center rounded-[10px] border py-4 transition-all ${
+                  paymentChoice === 'credit'
+                    ? 'border-amber-500/60 bg-amber-500/10 text-amber-500'
+                    : 'border-[#2A2A38] bg-card text-text-secondary hover:border-[#363648]'
+                }`}
+              >
+                <FileSignature className="w-6 h-6 mb-1" />
+                <span className="text-[13px] font-medium">Demande de crédit</span>
+                <span className="text-[11px] opacity-80 mt-0.5">Facture impayée</span>
+              </button>
+            </div>
+          </div>
+
           <Select
             label="Type de vente"
             options={[
@@ -563,72 +614,90 @@ export default function POSPage() {
             />
           )}
 
-          <Select
-            label="Méthode de paiement"
-            options={[
-              { value: PaymentMethod.CASH, label: 'Espèces' },
-              { value: PaymentMethod.CARD, label: 'Carte' },
-              { value: PaymentMethod.MIXED, label: 'Mixte' },
-            ]}
-            value={paymentMethod}
-            onChange={(e) => {
-              setPaymentMethod(e.target.value as PaymentMethod);
-              setCashAmount(0);
-              setCardAmount(0);
-            }}
-          />
-
-          {paymentMethod === PaymentMethod.CASH && (
-            <Input
-              label="Montant reçu"
-              type="number"
-              step="0.01"
-              value={cashAmount}
-              onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
-            />
-          )}
-
-          {paymentMethod === PaymentMethod.CARD && (
-            <Input
-              label="Montant carte"
-              type="number"
-              step="0.01"
-              value={cardAmount}
-              onChange={(e) => setCardAmount(parseFloat(e.target.value) || 0)}
-            />
-          )}
-
-          {paymentMethod === PaymentMethod.MIXED && (
+          {paymentChoice === 'comptant' && (
             <>
-              <Input
-                label="Montant espèces"
-                type="number"
-                step="0.01"
-                value={cashAmount}
-                onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
+              <Select
+                label="Méthode de paiement"
+                options={[
+                  { value: PaymentMethod.CASH, label: 'Espèces' },
+                  { value: PaymentMethod.CARD, label: 'Carte' },
+                  { value: PaymentMethod.MIXED, label: 'Mixte' },
+                ]}
+                value={paymentMethod}
+                onChange={(e) => {
+                  setPaymentMethod(e.target.value as PaymentMethod);
+                  setCashAmount(0);
+                  setCardAmount(0);
+                }}
               />
-              <Input
-                label="Montant carte"
-                type="number"
-                step="0.01"
-                value={cardAmount}
-                onChange={(e) => setCardAmount(parseFloat(e.target.value) || 0)}
-              />
+
+              {paymentMethod === PaymentMethod.CASH && (
+                <Input
+                  label="Montant reçu"
+                  type="number"
+                  step="0.01"
+                  value={cashAmount}
+                  onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
+                />
+              )}
+
+              {paymentMethod === PaymentMethod.CARD && (
+                <Input
+                  label="Montant carte"
+                  type="number"
+                  step="0.01"
+                  value={cardAmount}
+                  onChange={(e) => setCardAmount(parseFloat(e.target.value) || 0)}
+                />
+              )}
+
+              {paymentMethod === PaymentMethod.MIXED && (
+                <>
+                  <Input
+                    label="Montant espèces"
+                    type="number"
+                    step="0.01"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
+                  />
+                  <Input
+                    label="Montant carte"
+                    type="number"
+                    step="0.01"
+                    value={cardAmount}
+                    onChange={(e) => setCardAmount(parseFloat(e.target.value) || 0)}
+                  />
+                </>
+              )}
             </>
+          )}
+
+          {paymentChoice === 'credit' && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              {selectedClient ? (
+                <p className="text-amber-600 dark:text-amber-400">
+                  Facture impayée pour <strong>{selectedClient.companyName || `${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim() || 'ce client'}</strong>. Vous pourrez imprimer la demande de crédit (à faire signer) et valider un paiement plus tard dans Ventes.
+                </p>
+              ) : (
+                <p className="text-amber-600 dark:text-amber-400">
+                  Sélectionnez un client (bouton Client en caisse) pour enregistrer une demande de crédit. La facture sera marquée impayée.
+                </p>
+              )}
+            </div>
           )}
 
           <div className="bg-elevated p-4 rounded-lg">
             <div className="flex justify-between mb-2">
-              <span>Total à payer:</span>
+              <span>Total {paymentChoice === 'credit' ? 'dû' : 'à payer'}:</span>
               <span className="font-bold">{toDefault(total, saleCurrencyCode || defaultCurrencyCode).toFixed(2)} {currencyLabel}</span>
             </div>
-            {paymentMethod === PaymentMethod.CASH && cashAmount > 0 && (
+            {paymentChoice === 'comptant' && paymentMethod === PaymentMethod.CASH && cashAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span>Monnaie:</span>
                 <span>{toDefault(cashAmount - total, saleCurrencyCode || defaultCurrencyCode).toFixed(2)} {currencyLabel}</span>
               </div>
             )}
-            {paymentMethod === PaymentMethod.CARD && cardAmount > 0 && cardAmount !== total && (
+            {paymentChoice === 'comptant' && paymentMethod === PaymentMethod.CARD && cardAmount > 0 && cardAmount !== total && (
               <div className="flex justify-between text-sm">
                 <span>Différence:</span>
                 <span className={cardAmount > total ? 'text-success' : 'text-danger'}>
@@ -636,13 +705,13 @@ export default function POSPage() {
                 </span>
               </div>
             )}
-            {paymentMethod === PaymentMethod.MIXED && (
+            {paymentChoice === 'comptant' && paymentMethod === PaymentMethod.MIXED && (
               <div className="flex justify-between text-sm">
                 <span>Total reçu:</span>
                 <span>{toDefault(cashAmount + cardAmount, saleCurrencyCode || defaultCurrencyCode).toFixed(2)} {currencyLabel}</span>
               </div>
             )}
-            {paymentMethod === PaymentMethod.MIXED && (cashAmount + cardAmount) !== total && (
+            {paymentChoice === 'comptant' && paymentMethod === PaymentMethod.MIXED && (cashAmount + cardAmount) !== total && (
               <div className="flex justify-between text-sm">
                 <span>Différence:</span>
                 <span className={(cashAmount + cardAmount) > total ? 'text-success' : 'text-danger'}>
@@ -651,6 +720,61 @@ export default function POSPage() {
               </div>
             )}
           </div>
+        </div>
+      </Modal>
+
+      {/* Modal après vente à crédit : imprimer demande de crédit / facture */}
+      <Modal
+        isOpen={isCreditPrintModalOpen}
+        onClose={() => { setIsCreditPrintModalOpen(false); setLastCreatedCreditSale(null); }}
+        title="Vente à crédit enregistrée"
+        size="sm"
+        footer={
+          <Button variant="outline" onClick={() => { setIsCreditPrintModalOpen(false); setLastCreatedCreditSale(null); }}>
+            Fermer
+          </Button>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-text-secondary">
+            Vous pouvez imprimer la demande de crédit (à faire signer au client) et la facture (marquée impayée).
+          </p>
+          {lastCreatedCreditSale && (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { data: company } = await apiClient.get<CompanyInfo>('/company').catch(() => ({ data: null }));
+                    await generateCreditRequest(lastCreatedCreditSale, company);
+                    toast.success('Demande de crédit téléchargée');
+                  } catch (e) {
+                    toast.error('Erreur lors de la génération du PDF');
+                  }
+                }}
+              >
+                <FileSignature className="w-4 h-4 mr-2" />
+                Imprimer demande de crédit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { data: company } = await apiClient.get<CompanyInfo>('/company').catch(() => ({ data: null }));
+                    await generateInvoice(lastCreatedCreditSale, company);
+                    toast.success('Facture téléchargée');
+                  } catch (e) {
+                    toast.error('Erreur lors de la génération du PDF');
+                  }
+                }}
+              >
+                <Receipt className="w-4 h-4 mr-2" />
+                Imprimer facture (impayée)
+              </Button>
+            </div>
+          )}
         </div>
       </Modal>
 

@@ -13,16 +13,6 @@ export class ProductsService {
   ) {}
 
   async create(data: CreateProductDto) {
-    // Vérifier si SKU ou barcode existe déjà
-    if (data.barcode) {
-      const existingBarcode = await this.prisma.product.findUnique({
-        where: { barcode: data.barcode },
-      });
-      if (existingBarcode) {
-        throw new BadRequestException('Ce code-barres existe déjà. Veuillez utiliser un code-barres unique.');
-      }
-    }
-
     const existingSku = await this.prisma.product.findUnique({
       where: { sku: data.sku },
     });
@@ -30,9 +20,11 @@ export class ProductsService {
       throw new BadRequestException('Ce SKU existe déjà. Veuillez utiliser un SKU unique.');
     }
 
+    const { barcode: _b, ...rest } = data;
     const product = await this.prisma.product.create({
       data: {
-        ...data,
+        ...rest,
+        barcode: data.sku,
         purchasePrice: new Decimal(data.purchasePrice),
         salePrice: new Decimal(data.salePrice),
       },
@@ -166,18 +158,6 @@ export class ProductsService {
       }
     }
 
-    // Vérifier si le barcode est modifié et s'il existe déjà pour un autre produit
-    if (data.barcode !== undefined && data.barcode !== product.barcode) {
-      if (data.barcode) {
-        const existingBarcode = await this.prisma.product.findUnique({
-          where: { barcode: data.barcode },
-        });
-        if (existingBarcode && existingBarcode.id !== id) {
-          throw new BadRequestException('Ce code-barres existe déjà. Veuillez utiliser un code-barres unique.');
-        }
-      }
-    }
-
     // Si le prix change, créer un historique
     if (data.purchasePrice || data.salePrice) {
       await this.prisma.priceHistory.create({
@@ -192,13 +172,16 @@ export class ProductsService {
       });
     }
 
+    const { barcode: _b, ...rest } = data;
+    const updateData: any = {
+      ...rest,
+      purchasePrice: data.purchasePrice ? new Decimal(data.purchasePrice) : undefined,
+      salePrice: data.salePrice ? new Decimal(data.salePrice) : undefined,
+      barcode: (data.sku !== undefined ? data.sku : product.sku) as string,
+    };
     return this.prisma.product.update({
       where: { id },
-      data: {
-        ...data,
-        purchasePrice: data.purchasePrice ? new Decimal(data.purchasePrice) : undefined,
-        salePrice: data.salePrice ? new Decimal(data.salePrice) : undefined,
-      },
+      data: updateData,
       include: {
         category: true,
         variants: true,
@@ -250,7 +233,7 @@ export class ProductsService {
           salePrice: new Decimal(variant.salePrice),
           stockCurrent: variant.stockCurrent,
           stockMin: variant.stockMin,
-          barcode: variant.barcode,
+          barcode: generatedSku,
         };
       }),
     );

@@ -10,11 +10,13 @@ import SuppliersPage from './pages/SuppliersPage';
 import EntriesPage from './pages/EntriesPage';
 import SalesPage from './pages/SalesPage';
 import StockPage from './pages/StockPage';
+import CreditsPage from './pages/CreditsPage';
 import Layout from './components/Layout';
 import ManagementLayout from './components/ManagementLayout';
 import CompanyIdentityPage from './pages/management/CompanyIdentityPage';
 import CurrencyManagementPage from './pages/management/CurrencyManagementPage';
 import UsersManagementPage from './pages/management/UsersManagementPage';
+import SettingsPage from './pages/management/SettingsPage';
 
 function App() {
   const { isAuthenticated } = useAuthStore();
@@ -30,6 +32,7 @@ function App() {
             <Route path="products" element={<ProductsPage />} />
             <Route path="pos" element={<POSPage />} />
             <Route path="sales" element={<SalesPage />} />
+            <Route path="credits" element={<CreditsPage />} />
             <Route path="stock" element={<StockPage />} />
             <Route path="clients" element={<ClientsPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
@@ -40,6 +43,7 @@ function App() {
             <Route path="company" element={<CompanyIdentityPage />} />
             <Route path="currency" element={<CurrencyManagementPage />} />
             <Route path="users" element={<UsersManagementPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -10,6 +10,7 @@ export enum PaymentMethod {
   CASH = 'CASH',
   CARD = 'CARD',
   MIXED = 'MIXED',
+  CREDIT = 'CREDIT', // Vente à crédit (facture impayée)
 }
 
 export enum SaleStatus {
@@ -48,6 +49,8 @@ export interface Sale {
   discount: number;
   tax: number;
   total: number;
+  amountPaid?: number;
+  dueDate?: string | null;
   margin: number;
   paymentMethod: PaymentMethod;
   cashAmount?: number;

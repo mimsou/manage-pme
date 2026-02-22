@@ -369,6 +369,7 @@ enum PaymentMethod {
   CASH
   CARD
   MIXED
+  CREDIT  // Vente à crédit (facture impayée, document à signer)
   OTHER
 }
 
@@ -392,6 +393,8 @@ model Sale {
   discount        Decimal      @default(0) @db.Decimal(10, 2)
   tax             Decimal      @default(0) @db.Decimal(10, 2) // TVA
   total           Decimal      @db.Decimal(10, 2)
+  amountPaid      Decimal      @default(0) @db.Decimal(10, 2) // Montant déjà réglé (crédit client = total - amountPaid)
+  dueDate         DateTime?    @db.Date // Échéance (facture) pour calcul ancienneté impayé
   paymentMethod   PaymentMethod
   cashAmount      Decimal?     @db.Decimal(10, 2)
   cardAmount      Decimal?     @db.Decimal(10, 2)
@@ -575,5 +578,18 @@ model InventoryItem {
   @@index([inventoryId])
   @@index([productId])
   @@map("inventory_items")
+}
+
+// ============================================
+// PARAMÈTRES APPLICATION (centralisés)
+// ============================================
+
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
 }
 

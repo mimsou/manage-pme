@@ -451,7 +451,7 @@ export function VariantBuilder({
                   </div>
                 </div>
 
-                {/* Stock minimum et code-barres */}
+                {/* Stock minimum — code-barres généré automatiquement à partir du SKU */}
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
                     <label className="block text-xs font-semibold text-text-primary mb-1">
@@ -474,20 +474,10 @@ export function VariantBuilder({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-text-primary mb-1">
+                    <label className="block text-xs font-semibold text-text-muted mb-1">
                       Code-barres
                     </label>
-                    <input
-                      type="text"
-                      value={variant.barcode || ''}
-                      onChange={(e) =>
-                        updateVariant(variant.id, {
-                          barcode: e.target.value || undefined,
-                        })
-                      }
-                      placeholder="Optionnel"
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
-                    />
+                    <p className="text-xs text-text-muted py-2">Généré automatiquement (SKU)</p>
                   </div>
                 </div>
               </div>

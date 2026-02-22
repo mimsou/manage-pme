@@ -34,4 +34,9 @@ export const salesApi = {
     const response = await apiClient.post(`/sales/${saleId}/refund`, data);
     return response.data;
   },
+
+  recordPayment: async (saleId: string, amount: number): Promise<Sale> => {
+    const response = await apiClient.post(`/sales/${saleId}/payment`, { amount });
+    return response.data;
+  },
 };
