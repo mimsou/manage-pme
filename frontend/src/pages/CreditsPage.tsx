@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Receipt,
   FileText,
-  Calendar,
   Banknote,
   ArrowLeft,
 } from 'lucide-react';
@@ -232,7 +231,7 @@ export default function CreditsPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Solde dû</TableHead>
                     <TableHead>Nb impayés</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead> </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

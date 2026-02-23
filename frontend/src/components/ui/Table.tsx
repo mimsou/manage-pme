@@ -2,8 +2,12 @@ import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface TableProps {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
+}
+
+interface TableRowProps extends TableProps {
+  onClick?: () => void;
 }
 
 export function Table({ children, className }: TableProps) {
@@ -41,11 +45,16 @@ export function TableBody({ children, className }: TableProps) {
   return <tbody className={className}>{children}</tbody>;
 }
 
-export function TableRow({ children, className }: TableProps) {
+export function TableRow({ children, className, onClick }: TableRowProps) {
   return (
     <tr
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
       className={cn(
-        'transition-colors duration-150 cursor-pointer hover:bg-[rgba(255,255,255,0.025)]',
+        'transition-colors duration-150',
+        onClick && 'cursor-pointer hover:bg-[rgba(255,255,255,0.025)]',
         className
       )}
       style={{

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Search, Plus, Minus, ShoppingCart, X, Barcode, User, Receipt, Package, Banknote, CreditCard, Wallet, FileSignature } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, X, Barcode, User, Receipt, Package, Wallet, FileSignature } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
