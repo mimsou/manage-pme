@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { Sale, SaleType, PaymentMethod, SaleRefund, RefundItemLine } from '@/types/sale';
 import { ClientType } from '@/types/client';
+import type { Quote } from '@/types/quote';
 
 export interface CompanyInfo {
   name?: string | null;
@@ -319,6 +320,139 @@ export async function generateInvoice(sale: Sale, company?: CompanyInfo | null) 
   }
 
   doc.save(`facture-${sale.invoiceNumber || sale.id}.pdf`);
+}
+
+function getQuoteCurrencyLabel(quote: { currencyCode?: string | null }): string {
+  return getSaleCurrencyLabel(quote);
+}
+
+/**
+ * Génère le PDF d'un devis (quote).
+ */
+export async function generateQuote(quote: Quote, company?: CompanyInfo | null) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const companyDisplay = getCompanyDisplay(company);
+  const companyTextX = 20;
+  const currencyLabel = getQuoteCurrencyLabel(quote);
+
+  let headerStartY = 20;
+  if (companyDisplay.logo) {
+    try {
+      const { width: natW, height: natH } = await getImageDimensions(companyDisplay.logo);
+      const { w: logoW, h: logoH } = fitInBox(natW, natH, INVOICE_LOGO_MAX_W, INVOICE_LOGO_MAX_H);
+      const logoX = (pageWidth - logoW) / 2;
+      const format = companyDisplay.logo.includes('png') ? 'PNG' : 'JPEG';
+      doc.addImage(companyDisplay.logo, format, logoX, 15, logoW, logoH);
+      headerStartY = 15 + logoH + 10;
+    } catch (_) {}
+  }
+
+  let yPos = headerStartY;
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DEVIS', pageWidth - 50, yPos);
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`N° ${quote.quoteNumber}`, pageWidth - 50, yPos);
+  yPos += 5;
+  doc.text(`Date: ${new Date(quote.createdAt).toLocaleDateString('fr-FR')}`, pageWidth - 50, yPos);
+  if (quote.validUntil) {
+    yPos += 5;
+    doc.text(`Valide jusqu'au: ${new Date(quote.validUntil).toLocaleDateString('fr-FR')}`, pageWidth - 50, yPos);
+  }
+
+  yPos = headerStartY;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(companyDisplay.name || '', companyTextX, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (companyDisplay.address) doc.text(companyDisplay.address, companyTextX, yPos), (yPos += 5);
+  if (companyDisplay.city) doc.text(companyDisplay.city, companyTextX, yPos), (yPos += 5);
+  if (companyDisplay.phone) doc.text(`Tél: ${companyDisplay.phone}`, companyTextX, yPos), (yPos += 5);
+  if (companyDisplay.email) doc.text(`Email: ${companyDisplay.email}`, companyTextX, yPos), (yPos += 5);
+
+  yPos += 10;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENT:', 20, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (quote.client) {
+    const name = quote.client.companyName || `${quote.client.firstName || ''} ${quote.client.lastName || ''}`.trim() || 'Client';
+    doc.text(name, 20, yPos);
+    yPos += 5;
+    if (quote.client.address) doc.text(quote.client.address, 20, yPos), (yPos += 5);
+    if (quote.client.phone) doc.text(`Tél: ${quote.client.phone}`, 20, yPos), (yPos += 5);
+    if (quote.client.email) doc.text(`Email: ${quote.client.email}`, 20, yPos), (yPos += 5);
+  } else {
+    doc.text('Non assigné', 20, yPos);
+  }
+
+  yPos += 12;
+  const tableWidth = pageWidth - 40;
+  const colX = [20, 100, 120, 150, 180];
+  doc.setFont('helvetica', 'bold');
+  doc.rect(20, yPos - 5, tableWidth, 8);
+  doc.text('Description', colX[0], yPos);
+  doc.text('Qté', colX[1], yPos);
+  doc.text('Prix unit.', colX[2], yPos);
+  doc.text('Remise', colX[3], yPos);
+  doc.text('Total', colX[4], yPos);
+  yPos += 8;
+  doc.setFont('helvetica', 'normal');
+
+  quote.items.forEach((item) => {
+    if (yPos > pageHeight - 50) {
+      doc.addPage();
+      yPos = 20;
+    }
+    const name = item.product?.name || 'Produit';
+    const lines = doc.splitTextToSize(name, 76);
+    lines.forEach((line: string, i: number) => {
+      if (i === 0) doc.rect(20, yPos - 4, tableWidth, 8);
+      doc.text(line, colX[0] + 2, yPos + 2);
+    });
+    doc.text(String(item.quantity), colX[1] + 2, yPos + 2);
+    doc.text(`${Number(item.unitPrice).toFixed(2)} ${currencyLabel}`, colX[2] + 2, yPos + 2);
+    doc.text(`${Number(item.discount).toFixed(2)} ${currencyLabel}`, colX[3] + 2, yPos + 2);
+    doc.text(`${Number(item.totalPrice).toFixed(2)} ${currencyLabel}`, colX[4] + 2, yPos + 2, { align: 'right' });
+    yPos += Math.max(8, lines.length * 5);
+  });
+
+  yPos += 6;
+  const totalsX = pageWidth - 60;
+  doc.text('Sous-total HT:', totalsX, yPos, { align: 'right' });
+  doc.text(`${Number(quote.subtotal).toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+  if (Number(quote.discount) > 0) {
+    yPos += 5;
+    doc.text('Remise:', totalsX, yPos, { align: 'right' });
+    doc.text(`-${Number(quote.discount).toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+  }
+  if (Number(quote.tax) > 0) {
+    yPos += 5;
+    doc.text('TVA (20%):', totalsX, yPos, { align: 'right' });
+    doc.text(`${Number(quote.tax).toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+  }
+  yPos += 5;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TOTAL TTC:', totalsX, yPos, { align: 'right' });
+  doc.text(`${Number(quote.total).toFixed(2)} ${currencyLabel}`, pageWidth - 20, yPos, { align: 'right' });
+
+  if (quote.notes) {
+    yPos += 12;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Notes: ' + quote.notes, 20, yPos, { maxWidth: pageWidth - 40 });
+  }
+
+  doc.save(`devis-${quote.quoteNumber}.pdf`);
 }
 
 /**

@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { productsApi } from '@/api/products';
 import { salesApi } from '@/api/sales';
+import { quotesApi } from '@/api/quotes';
 import { clientsApi } from '@/api/clients';
 import { categoriesApi } from '@/api/categories';
 import { currencyApi } from '@/api/currency';
@@ -157,6 +158,30 @@ export default function POSPage() {
 
   const removeFromCart = (productId: string) => {
     setCart(cart.filter((item) => item.product.id !== productId));
+  };
+
+  const handleCreateQuote = async () => {
+    if (cart.length === 0) {
+      toast.error('Le panier est vide');
+      return;
+    }
+    try {
+      const quote = await quotesApi.create({
+        clientId: selectedClient?.id,
+        currencyCode: saleCurrencyCode || defaultCurrencyCode,
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount,
+        })),
+      });
+      setCart([]);
+      toast.success(`Devis ${quote.quoteNumber} créé`);
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Erreur lors de la création du devis';
+      toast.error(msg);
+    }
   };
 
   const subtotal = cart.reduce(
@@ -480,27 +505,38 @@ export default function POSPage() {
           )}
         </div>
 
-        {/* Right panel: un seul bouton Payer — le choix comptant / crédit se fait dans la modale */}
+        {/* Right panel: Devis + Payer */}
         <div className="flex flex-col overflow-hidden p-4" style={{ background: '#17171D' }}>
           <h2 className="section-heading mb-3 text-[13px]">Paiement</h2>
-          <p className="text-[11px] text-text-muted mb-3">Comptant (espèces, carte, mixte) ou demande de crédit (facture impayée).</p>
-          <button
-            type="button"
-            className="mt-auto w-full text-white bg-success hover:bg-[#059669] hover:shadow-[0_0_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all duration-200"
-            style={{ height: 52, fontSize: 15, fontWeight: 700, borderRadius: 10, boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}
-            onClick={() => {
-              if (cart.length > 0) {
-                setPaymentChoice('comptant');
-                setPaymentMethod(PaymentMethod.CASH);
-                setCashAmount(0);
-                setCardAmount(0);
-                setIsPaymentModalOpen(true);
-              }
-            }}
-            disabled={cart.length === 0}
-          >
-            Payer (F4)
-          </button>
+          <p className="text-[11px] text-text-muted mb-3">Créer un devis ou régler la vente (comptant / crédit).</p>
+          <div className="flex flex-col gap-2 mt-auto">
+            <button
+              type="button"
+              className="w-full text-text-primary border border-border-subtle hover:bg-elevated hover:border-brand/50 transition-all duration-200 rounded-[10px] font-semibold"
+              style={{ height: 44, fontSize: 14 }}
+              onClick={handleCreateQuote}
+              disabled={cart.length === 0}
+            >
+              Devis
+            </button>
+            <button
+              type="button"
+              className="w-full text-white bg-success hover:bg-[#059669] hover:shadow-[0_0_24px_rgba(16,185,129,0.35)] active:scale-[0.99] transition-all duration-200"
+              style={{ height: 52, fontSize: 15, fontWeight: 700, borderRadius: 10, boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}
+              onClick={() => {
+                if (cart.length > 0) {
+                  setPaymentChoice('comptant');
+                  setPaymentMethod(PaymentMethod.CASH);
+                  setCashAmount(0);
+                  setCardAmount(0);
+                  setIsPaymentModalOpen(true);
+                }
+              }}
+              disabled={cart.length === 0}
+            >
+              Payer (F4)
+            </button>
+          </div>
         </div>
       </div>
 

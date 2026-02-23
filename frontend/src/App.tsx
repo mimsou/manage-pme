@@ -9,6 +9,7 @@ import ClientsPage from './pages/ClientsPage';
 import SuppliersPage from './pages/SuppliersPage';
 import EntriesPage from './pages/EntriesPage';
 import SalesPage from './pages/SalesPage';
+import QuotesPage from './pages/QuotesPage';
 import StockPage from './pages/StockPage';
 import CreditsPage from './pages/CreditsPage';
 import Layout from './components/Layout';
@@ -32,6 +33,7 @@ function App() {
             <Route path="products" element={<ProductsPage />} />
             <Route path="pos" element={<POSPage />} />
             <Route path="sales" element={<SalesPage />} />
+            <Route path="quotes" element={<QuotesPage />} />
             <Route path="credits" element={<CreditsPage />} />
             <Route path="stock" element={<StockPage />} />
             <Route path="clients" element={<ClientsPage />} />

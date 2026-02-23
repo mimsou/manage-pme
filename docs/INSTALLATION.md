@@ -34,7 +34,7 @@ npm install
 
 ```bash
 cd backend
-
+git 
 # Créer le fichier .env
 cp .env.example .env
 

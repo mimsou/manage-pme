@@ -32,8 +32,9 @@ model User {
   updatedAt DateTime @updatedAt
 
   refreshTokens RefreshToken[]
-  sales         Sale[]
-  inventories   Inventory[]
+  sales        Sale[]
+  quotes       Quote[]
+  inventories  Inventory[]
   stockMovements StockMovement[]
   cashRegisters CashRegister[]
 
@@ -146,10 +147,11 @@ model Product {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  category        Category         @relation(fields: [categoryId], references: [id])
-  variants        ProductVariant[]
-  stockMovements  StockMovement[]
-  saleItems       SaleItem[]
+  category         Category         @relation(fields: [categoryId], references: [id])
+  variants         ProductVariant[]
+  stockMovements   StockMovement[]
+  saleItems        SaleItem[]
+  quoteItems      QuoteItem[]
   inventoryItems  InventoryItem[]
   priceHistory    PriceHistory[]
   supplierProducts SupplierProduct[]
@@ -236,7 +238,8 @@ model Client {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  sales Sale[]
+  sales  Sale[]
+  quotes Quote[]
 
   @@index([email])
   @@index([phone])
@@ -403,11 +406,12 @@ model Sale {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  client       Client?      @relation(fields: [clientId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
-  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
-  items        SaleItem[]
-  refunds      SaleRefund[]
+  client             Client?      @relation(fields: [clientId], references: [id])
+  user               User         @relation(fields: [userId], references: [id])
+  cashRegister       CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  convertedFromQuote Quote?       @relation("QuoteConvertedSale") // Quote.convertedSaleId -> Sale
+  items              SaleItem[]
+  refunds            SaleRefund[]
 
   @@index([clientId])
   @@index([userId])
@@ -453,6 +457,67 @@ model SaleRefund {
   @@index([saleId])
   @@index([avoirNumber])
   @@map("sale_refunds")
+}
+
+// ============================================
+// DEVIS
+// ============================================
+
+enum QuoteStatus {
+  DRAFT      // Brouillon
+  SENT       // Envoyé au client
+  ACCEPTED   // Accepté (en attente de conversion)
+  REFUSED    // Refusé
+  EXPIRED    // Expiré
+  CONVERTED  // Converti en facture
+}
+
+model Quote {
+  id               String      @id @default(uuid())
+  quoteNumber      String      @unique // ex: DEV-20250219-001
+  clientId         String?
+  userId           String      // Auteur du devis
+  status           QuoteStatus @default(DRAFT)
+  subtotal         Decimal     @db.Decimal(10, 2)
+  discount         Decimal     @default(0) @db.Decimal(10, 2)
+  tax              Decimal     @default(0) @db.Decimal(10, 2)
+  total            Decimal     @db.Decimal(10, 2)
+  validUntil       DateTime?   @db.Date // Validité du devis
+  notes            String?
+  currencyCode     String?
+  convertedSaleId  String?     @unique // Facture créée à partir de ce devis
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  client          Client?     @relation(fields: [clientId], references: [id])
+  user            User        @relation(fields: [userId], references: [id])
+  items           QuoteItem[]
+  convertedSale   Sale?       @relation("QuoteConvertedSale", fields: [convertedSaleId], references: [id])
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([quoteNumber])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id         String   @id @default(uuid())
+  quoteId    String
+  productId  String
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  discount   Decimal  @default(0) @db.Decimal(10, 2)
+  totalPrice Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+
+  quote   Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([quoteId])
+  @@index([productId])
+  @@map("quote_items")
 }
 
 // ============================================
