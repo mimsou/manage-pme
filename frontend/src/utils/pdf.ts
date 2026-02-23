@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { Sale, SaleType, PaymentMethod, SaleRefund, RefundItemLine } from '@/types/sale';
 import { ClientType } from '@/types/client';
-import type { Quote } from '@/types/quote';
+import type { Quote, QuoteItem } from '@/types/quote';
 
 export interface CompanyInfo {
   name?: string | null;
@@ -407,7 +407,7 @@ export async function generateQuote(quote: Quote, company?: CompanyInfo | null) 
   yPos += 8;
   doc.setFont('helvetica', 'normal');
 
-  quote.items.forEach((item) => {
+  quote.items.forEach((item: QuoteItem) => {
     if (yPos > pageHeight - 50) {
       doc.addPage();
       yPos = 20;
