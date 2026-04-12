@@ -76,9 +76,9 @@ function toStr(v: unknown): string {
 }
 
 function getClientDisplay(quote: Quote): string {
-  if (quote.client && typeof quote.client === 'object') {
-    const c = quote.client as Record<string, unknown>;
-    const name = (c.companyName as string) ||
+  if (quote.client) {
+    const c = quote.client;
+    const name = c.companyName ||
       `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
     return name || 'Client sans nom';
   }
@@ -196,7 +196,7 @@ export default function QuotesPage() {
     }
     setConvertSubmitting(true);
     try {
-      const sale = await quotesApi.convertToSale(selectedQuote.id, {
+      await quotesApi.convertToSale(selectedQuote.id, {
         quantities: quantities.map((q) => ({ quoteItemId: q.quoteItemId, quantity: q.quantity })),
       });
       toast.success('Facture créée à partir du devis');
@@ -444,7 +444,7 @@ export default function QuotesPage() {
             </Table>
             {selectedQuote.convertedSaleId && (
               <p className="text-[12px] text-success">
-                Ce devis a été converti en facture. Consultez la facture dans la section Ventes.
+                Ce devis a été converti en facture. Consultez la facture dans Vente / facture.
               </p>
             )}
           </div>

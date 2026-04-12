@@ -1,5 +1,11 @@
 import { apiClient } from './client';
-import { Product, CreateProductDto, UpdateProductDto, ProductsResponse } from '@/types/product';
+import {
+  Product,
+  CreateProductDto,
+  UpdateProductDto,
+  ProductsResponse,
+  ResolveBarcodeResponse,
+} from '@/types/product';
 
 export const productsApi = {
   getAll: async (params?: {
@@ -19,7 +25,12 @@ export const productsApi = {
   },
 
   getByBarcode: async (barcode: string): Promise<Product> => {
-    const response = await apiClient.get(`/products/barcode/${barcode}`);
+    const response = await apiClient.get(`/products/barcode/${encodeURIComponent(barcode)}`);
+    return response.data;
+  },
+
+  resolveBarcode: async (barcode: string): Promise<ResolveBarcodeResponse> => {
+    const response = await apiClient.get(`/products/resolve-barcode/${encodeURIComponent(barcode)}`);
     return response.data;
   },
 

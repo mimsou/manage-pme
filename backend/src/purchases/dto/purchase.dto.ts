@@ -1,7 +1,18 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsInt, IsNumber, IsDateString, IsEnum, Min } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsInt,
+  IsNumber,
+  IsDateString,
+  IsEnum,
+  Min,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { PurchaseStatus } from '@prisma/client';
+import { PurchaseStatus, SupplierDocumentType } from '@prisma/client';
 
 export class CreatePurchaseItemDto {
   @ApiProperty()
@@ -53,6 +64,34 @@ export class CreatePurchaseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ enum: SupplierDocumentType, required: false })
+  @IsEnum(SupplierDocumentType)
+  @IsOptional()
+  documentType?: SupplierDocumentType;
+
+  @ApiProperty({ required: false, description: 'N° bon de livraison fournisseur' })
+  @IsString()
+  @IsOptional()
+  supplierDeliveryNoteNumber?: string;
+
+  @ApiProperty({ required: false })
+  @IsDateString()
+  @IsOptional()
+  supplierDeliveryNoteDate?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Si type BL : réception complète immédiate (entrée stock)',
+  })
+  @IsBoolean()
+  @IsOptional()
+  autoReceiveFull?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
 }
 
 export class UpdatePurchaseDto {
@@ -80,6 +119,38 @@ export class UpdatePurchaseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ enum: SupplierDocumentType, required: false })
+  @IsEnum(SupplierDocumentType)
+  @IsOptional()
+  documentType?: SupplierDocumentType;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  supplierDeliveryNoteNumber?: string;
+
+  @ApiProperty({ required: false })
+  @IsDateString()
+  @IsOptional()
+  supplierDeliveryNoteDate?: string;
+
+  @ApiProperty({ required: false })
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+}
+
+export class RecordPurchasePaymentDto {
+  @ApiProperty({ description: 'Montant à ajouter au déjà payé' })
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @ApiProperty({ required: false, description: 'Met à jour l’échéance si fourni' })
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
 }
 
 export class ReceivePurchaseItemDto {

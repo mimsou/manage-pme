@@ -12,6 +12,16 @@ import { CreateDamageDto } from './dto/damage.dto';
 export class StockController {
   constructor(private readonly stockService: StockService) {}
 
+  @Get('snapshot')
+  @ApiOperation({
+    summary: 'Stock snapshot with valuation',
+    description:
+      'Quantités et valorisations (achat courant, PMP depuis achats réceptionnés, vente). Une ligne par SKU (variante ou produit simple).',
+  })
+  async getSnapshot() {
+    return this.stockService.getSnapshot();
+  }
+
   @Get('movements')
   @ApiOperation({ summary: 'Get stock movements' })
   @ApiQuery({ name: 'productId', required: false })

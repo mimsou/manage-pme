@@ -296,7 +296,7 @@ export function SalesContent() {
   return (
     <div>
       <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <h1 className="page-title">Ventes</h1>
+        <h1 className="page-title">Vente / facture</h1>
         <div className="flex items-center gap-2">
           <Link to="/credits">
             <Button variant="outline" className="btn">

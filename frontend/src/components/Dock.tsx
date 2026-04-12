@@ -8,17 +8,19 @@ import {
   ShoppingCart,
   Users,
   Truck,
-  FileText,
   FileSpreadsheet,
   Settings,
   Warehouse,
   ClipboardList,
+  ClipboardCheck,
   TrendingUp,
   Wallet,
+  Landmark,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { creditsApi } from '../api/credits';
+import { supplierCreditsApi } from '../api/supplier-credits';
 
 type DockItem = { id: string; href: string; label: string; icon: LucideIcon; color: string };
 const DOCK_MODULES: Array<DockItem | { separator: true }> = [
@@ -26,14 +28,21 @@ const DOCK_MODULES: Array<DockItem | { separator: true }> = [
   { id: 'pos', href: '/pos', label: 'Point de Vente', icon: ShoppingCart, color: '#10B981' },
   { id: 'products', href: '/products', label: 'Produits', icon: Package, color: '#F59E0B' },
   { id: 'stock', href: '/stock', label: 'Stock', icon: Warehouse, color: '#3B82F6' },
-  { id: 'inventory', href: '/entries', label: 'Entrées', icon: ClipboardList, color: '#8B5CF6' },
-  { id: 'sales', href: '/sales', label: 'Ventes', icon: TrendingUp, color: '#10B981' },
+  { id: 'inventory', href: '/inventory', label: 'Inventaire', icon: ClipboardCheck, color: '#A78BFA' },
+  { id: 'entries', href: '/entries', label: 'Entrées', icon: ClipboardList, color: '#8B5CF6' },
+  { id: 'sales', href: '/sales', label: 'Vente / facture', icon: TrendingUp, color: '#10B981' },
   { id: 'quotes', href: '/quotes', label: 'Devis', icon: FileSpreadsheet, color: '#6366F1' },
   { separator: true },
   { id: 'clients', href: '/clients', label: 'Clients', icon: Users, color: '#F472B6' },
   { id: 'credits', href: '/credits', label: 'Crédits clients', icon: Wallet, color: '#F59E0B' },
+  {
+    id: 'supplier-credits',
+    href: '/supplier-credits',
+    label: 'Crédits fourn.',
+    icon: Landmark,
+    color: '#EAB308',
+  },
   { id: 'suppliers', href: '/suppliers', label: 'Fournisseurs', icon: Truck, color: '#FB923C' },
-  { id: 'invoices', href: '/entries', label: 'Factures', icon: FileText, color: '#34D399' },
   { separator: true },
   { id: 'admin', href: '/management', label: 'Admin', icon: Settings, color: '#94A3B8' },
 ];
@@ -56,6 +65,7 @@ export function Dock() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [creditOverdueCount, setCreditOverdueCount] = useState<number>(0);
+  const [supplierPayableOverdueCount, setSupplierPayableOverdueCount] = useState<number>(0);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isManagement = location.pathname.startsWith('/management');
@@ -69,10 +79,15 @@ export function Dock() {
   }, []);
 
   useEffect(() => {
-    creditsApi.getOverdueCount().then((res) => setCreditOverdueCount(res.count)).catch(() => setCreditOverdueCount(0));
-    const interval = setInterval(() => {
+    const load = () => {
       creditsApi.getOverdueCount().then((res) => setCreditOverdueCount(res.count)).catch(() => setCreditOverdueCount(0));
-    }, 60 * 1000);
+      supplierCreditsApi
+        .getOverdueCount()
+        .then((res) => setSupplierPayableOverdueCount(res.count))
+        .catch(() => setSupplierPayableOverdueCount(0));
+    };
+    load();
+    const interval = setInterval(load, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -189,6 +204,14 @@ export function Dock() {
                       style={{ padding: '0 4px' }}
                     >
                       {creditOverdueCount > 99 ? '99+' : creditOverdueCount}
+                    </span>
+                  )}
+                  {item.id === 'supplier-credits' && supplierPayableOverdueCount > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-danger border-2 border-[rgba(20,20,28,0.9)]"
+                      style={{ padding: '0 4px' }}
+                    >
+                      {supplierPayableOverdueCount > 99 ? '99+' : supplierPayableOverdueCount}
                     </span>
                   )}
                 </motion.div>

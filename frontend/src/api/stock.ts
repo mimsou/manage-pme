@@ -1,7 +1,18 @@
 import { apiClient } from './client';
-import { StockMovement, CreateDamageDto, StockMovementsResponse, StockMovementType } from '@/types/stock';
+import {
+  StockMovement,
+  CreateDamageDto,
+  StockMovementsResponse,
+  StockMovementType,
+  StockSnapshotResponse,
+} from '@/types/stock';
 
 export const stockApi = {
+  getSnapshot: async (): Promise<StockSnapshotResponse> => {
+    const response = await apiClient.get('/stock/snapshot');
+    return response.data;
+  },
+
   getMovements: async (params?: {
     productId?: string;
     type?: StockMovementType;

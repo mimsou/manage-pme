@@ -64,6 +64,16 @@ export class ProductsController {
     });
   }
 
+  @Get('resolve-barcode/:barcode')
+  @ApiOperation({
+    summary: 'Resolve barcode to product or variant',
+    description:
+      'Cherche d’abord un produit par code-barres, puis une variante. Pour les inventaires et scans.',
+  })
+  async resolveBarcode(@Param('barcode') barcode: string) {
+    return this.productsService.resolveBarcode(barcode);
+  }
+
   @Get('barcode/:barcode')
   @ApiOperation({ summary: 'Get product by barcode' })
   async findByBarcode(@Param('barcode') barcode: string) {

@@ -6,6 +6,7 @@ import {
   ReceivePurchaseDto,
   PurchasesResponse,
   PurchaseStatus,
+  RecordPurchasePaymentDto,
 } from '@/types/purchase';
 
 export const purchasesApi = {
@@ -39,6 +40,11 @@ export const purchasesApi = {
 
   receive: async (id: string, data: ReceivePurchaseDto): Promise<Purchase> => {
     const response = await apiClient.post(`/purchases/${id}/receive`, data);
+    return response.data;
+  },
+
+  recordPayment: async (id: string, data: RecordPurchasePaymentDto): Promise<Purchase> => {
+    const response = await apiClient.patch(`/purchases/${id}/payment`, data);
     return response.data;
   },
 

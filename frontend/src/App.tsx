@@ -12,6 +12,9 @@ import SalesPage from './pages/SalesPage';
 import QuotesPage from './pages/QuotesPage';
 import StockPage from './pages/StockPage';
 import CreditsPage from './pages/CreditsPage';
+import SupplierCreditsPage from './pages/SupplierCreditsPage';
+import InventoryPage from './pages/InventoryPage';
+import InventorySessionPage from './pages/InventorySessionPage';
 import Layout from './components/Layout';
 import ManagementLayout from './components/ManagementLayout';
 import CompanyIdentityPage from './pages/management/CompanyIdentityPage';
@@ -35,7 +38,10 @@ function App() {
             <Route path="sales" element={<SalesPage />} />
             <Route path="quotes" element={<QuotesPage />} />
             <Route path="credits" element={<CreditsPage />} />
+            <Route path="supplier-credits" element={<SupplierCreditsPage />} />
             <Route path="stock" element={<StockPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="inventory/:id" element={<InventorySessionPage />} />
             <Route path="clients" element={<ClientsPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="entries" element={<EntriesPage />} />

@@ -49,4 +49,46 @@ export interface StockMovementsResponse {
   totalPages: number;
 }
 
+export interface StockSnapshotLine {
+  lineKey: string;
+  productId: string;
+  productName: string;
+  categoryId: string;
+  categoryName: string;
+  variantId: string | null;
+  variantLabel: string | null;
+  sku: string;
+  barcode: string | null;
+  qty: number;
+  stockMin: number;
+  isLowStock: boolean;
+  unitPurchasePrice: number;
+  unitSalePrice: number;
+  pmpUnit: number;
+  pmpSource: 'purchases' | 'catalog';
+  valuePurchase: number;
+  valueSale: number;
+  valuePmp: number;
+}
+
+export interface StockSnapshotCategoryTotals {
+  categoryId: string;
+  categoryName: string;
+  totalQty: number;
+  valuePurchase: number;
+  valueSale: number;
+  valuePmp: number;
+}
+
+export interface StockSnapshotResponse {
+  generatedAt: string;
+  totals: {
+    totalQty: number;
+    valuePurchase: number;
+    valueSale: number;
+    valuePmp: number;
+  };
+  byCategory: StockSnapshotCategoryTotals[];
+  lines: StockSnapshotLine[];
+}
 

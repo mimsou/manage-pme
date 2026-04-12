@@ -9,6 +9,12 @@ export enum PurchaseStatus {
   RETURNED = 'RETURNED',
 }
 
+export enum SupplierDocumentType {
+  PURCHASE_ORDER = 'PURCHASE_ORDER',
+  DELIVERY_NOTE = 'DELIVERY_NOTE',
+  SUPPLIER_INVOICE = 'SUPPLIER_INVOICE',
+}
+
 export interface PurchaseItem {
   id: string;
   purchaseId: string;
@@ -26,11 +32,16 @@ export interface Purchase {
   supplierId: string;
   supplier?: Supplier;
   reference: string;
+  documentType: SupplierDocumentType;
+  supplierDeliveryNoteNumber?: string | null;
+  supplierDeliveryNoteDate?: string | null;
   invoiceNumber?: string;
   invoiceDate?: string;
   deliveryDate?: string;
   status: PurchaseStatus;
   totalAmount: number;
+  amountPaid: number;
+  dueDate?: string | null;
   notes?: string;
   items: PurchaseItem[];
   createdAt: string;
@@ -41,9 +52,14 @@ export interface Purchase {
 export interface CreatePurchaseDto {
   supplierId: string;
   reference: string;
+  documentType?: SupplierDocumentType;
+  supplierDeliveryNoteNumber?: string;
+  supplierDeliveryNoteDate?: string;
   invoiceNumber?: string;
   invoiceDate?: string;
   deliveryDate?: string;
+  dueDate?: string;
+  autoReceiveFull?: boolean;
   items: {
     productId: string;
     quantity: number;
@@ -58,6 +74,15 @@ export interface UpdatePurchaseDto {
   deliveryDate?: string;
   status?: PurchaseStatus;
   notes?: string;
+  documentType?: SupplierDocumentType;
+  supplierDeliveryNoteNumber?: string;
+  supplierDeliveryNoteDate?: string;
+  dueDate?: string;
+}
+
+export interface RecordPurchasePaymentDto {
+  amount: number;
+  dueDate?: string;
 }
 
 export interface ReceivePurchaseItemDto {

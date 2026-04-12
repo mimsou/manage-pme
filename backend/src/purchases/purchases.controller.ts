@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -12,7 +13,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { PurchasesService } from './purchases.service';
-import { CreatePurchaseDto, UpdatePurchaseDto, ReceivePurchaseDto } from './dto/purchase.dto';
+import {
+  CreatePurchaseDto,
+  UpdatePurchaseDto,
+  ReceivePurchaseDto,
+  RecordPurchasePaymentDto,
+} from './dto/purchase.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -74,6 +80,14 @@ export class PurchasesController {
   @ApiOperation({ summary: 'Update purchase' })
   async update(@Param('id') id: string, @Body() updatePurchaseDto: UpdatePurchaseDto) {
     return this.purchasesService.update(id, updatePurchaseDto);
+  }
+
+  @Patch(':id/payment')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Record supplier payment (increment amountPaid)' })
+  async recordPayment(@Param('id') id: string, @Body() dto: RecordPurchasePaymentDto) {
+    return this.purchasesService.recordPayment(id, dto);
   }
 
   @Post(':id/receive')

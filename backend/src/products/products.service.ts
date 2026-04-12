@@ -120,6 +120,50 @@ export class ProductsService {
     return product;
   }
 
+  /**
+   * Résout un code-barres vers un produit simple ou une variante (SKU).
+   * Utilisé notamment pour l’inventaire et le scan au POS.
+   */
+  async resolveBarcode(barcode: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { barcode },
+      include: {
+        category: true,
+        variants: true,
+      },
+    });
+
+    if (product) {
+      return {
+        resolvedAs: 'product' as const,
+        product,
+        variant: null as null,
+      };
+    }
+
+    const variant = await this.prisma.productVariant.findFirst({
+      where: { barcode },
+      include: {
+        product: {
+          include: {
+            category: true,
+            variants: true,
+          },
+        },
+      },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return {
+      resolvedAs: 'variant' as const,
+      product: variant.product,
+      variant,
+    };
+  }
+
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },

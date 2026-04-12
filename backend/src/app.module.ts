@@ -16,6 +16,7 @@ import { PurchasesModule } from './purchases/purchases.module';
 import { CompanyModule } from './company/company.module';
 import { CurrencyModule } from './currency/currency.module';
 import { CreditsModule } from './credits/credits.module';
+import { SupplierCreditsModule } from './supplier-credits/supplier-credits.module';
 import { SettingsModule } from './settings/settings.module';
 import { QuotesModule } from './quotes/quotes.module';
 
@@ -40,6 +41,7 @@ import { QuotesModule } from './quotes/quotes.module';
     CompanyModule,
     CurrencyModule,
     CreditsModule,
+    SupplierCreditsModule,
     SettingsModule,
     QuotesModule,
   ],

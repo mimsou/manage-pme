@@ -1,3 +1,19 @@
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  name: string;
+  value: string;
+  attributes?: Record<string, string> | null;
+  sku: string;
+  barcode?: string | null;
+  purchasePrice?: number | null;
+  salePrice?: number | null;
+  stockCurrent: number;
+  stockMin: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -13,9 +29,14 @@ export interface Product {
   stockCurrent: number;
   hasVariants: boolean;
   isActive: boolean;
+  variants?: ProductVariant[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type ResolveBarcodeResponse =
+  | { resolvedAs: 'product'; product: Product; variant: null }
+  | { resolvedAs: 'variant'; product: Product; variant: ProductVariant };
 
 export interface Category {
   id: string;

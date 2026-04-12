@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -29,6 +29,7 @@ import {
   Purchase,
   PurchaseStatus,
   CreatePurchaseDto,
+  SupplierDocumentType,
 } from '@/types/purchase';
 import { Supplier } from '@/types/supplier';
 import { Product } from '@/types/product';
@@ -39,9 +40,13 @@ import { useDefaultCurrency } from '@/hooks/useDefaultCurrency';
 const purchaseSchema = z.object({
   supplierId: z.string().uuid('Le fournisseur doit être valide'),
   reference: z.string().min(1, 'La référence est requise'),
+  documentType: z.nativeEnum(SupplierDocumentType).optional(),
+  supplierDeliveryNoteNumber: z.string().optional(),
+  supplierDeliveryNoteDate: z.string().optional(),
   invoiceNumber: z.string().optional(),
   invoiceDate: z.string().optional(),
   deliveryDate: z.string().optional(),
+  dueDate: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -77,14 +82,22 @@ export default function EntriesPage() {
   const { currencyLabel } = useDefaultCurrency();
   const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
+  const [autoReceiveFull, setAutoReceiveFull] = useState(false);
+
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<CreatePurchaseDto>({
     resolver: zodResolver(purchaseSchema),
+    defaultValues: {
+      documentType: SupplierDocumentType.PURCHASE_ORDER,
+    },
   });
+
+  const documentTypeWatch = watch('documentType');
 
   useEffect(() => {
     loadPurchases();
@@ -134,12 +147,17 @@ export default function EntriesPage() {
 
   const handleNew = () => {
     setPurchaseItems([]);
+    setAutoReceiveFull(false);
     reset({
       supplierId: selectedSupplierId || '',
       reference: `ENT-${Date.now()}`,
+      documentType: SupplierDocumentType.PURCHASE_ORDER,
+      supplierDeliveryNoteNumber: '',
+      supplierDeliveryNoteDate: '',
       invoiceNumber: '',
       invoiceDate: '',
       deliveryDate: '',
+      dueDate: '',
       notes: '',
     });
     setIsModalOpen(true);
@@ -185,6 +203,8 @@ export default function EntriesPage() {
     try {
       await purchasesApi.create({
         ...data,
+        autoReceiveFull:
+          data.documentType === SupplierDocumentType.DELIVERY_NOTE ? autoReceiveFull : undefined,
         items: purchaseItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -370,10 +390,33 @@ export default function EntriesPage() {
 
   const hasActiveFilters = searchTerm || selectedSupplierId || selectedStatus || startDate || endDate;
 
+  const documentTypeLabel = (t: SupplierDocumentType | undefined) => {
+    switch (t) {
+      case SupplierDocumentType.DELIVERY_NOTE:
+        return 'BL';
+      case SupplierDocumentType.SUPPLIER_INVOICE:
+        return 'Facture';
+      case SupplierDocumentType.PURCHASE_ORDER:
+      default:
+        return 'BC';
+    }
+  };
+
+  const purchaseBalanceDue = (p: Purchase) =>
+    Math.max(0, Number(p.totalAmount) - Number(p.amountPaid ?? 0));
+
   return (
     <div>
       <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <h1 className="page-title">Entrées de Stock</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="page-title">Entrées de Stock</h1>
+          <Link
+            to="/supplier-credits"
+            className="text-[13px] text-text-secondary hover:text-brand transition-colors"
+          >
+            Crédits fournisseurs
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -414,10 +457,13 @@ export default function EntriesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Référence</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Fournisseur</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>N° Facture</TableHead>
                     <TableHead>Montant</TableHead>
+                    <TableHead>Solde dû</TableHead>
+                    <TableHead>Échéance</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -426,10 +472,35 @@ export default function EntriesPage() {
                   {purchases.map((purchase) => (
                     <TableRow key={purchase.id}>
                       <TableCell className="font-mono text-[12px] text-text-primary">{purchase.reference}</TableCell>
-                      <TableCell>{purchase.supplier?.name || '-'}</TableCell>
+                      <TableCell className="text-[12px] text-text-secondary">
+                        {documentTypeLabel(purchase.documentType)}
+                      </TableCell>
+                      <TableCell>
+                        <div>{purchase.supplier?.name || '-'}</div>
+                        {purchase.supplierId && purchaseBalanceDue(purchase) > 0 && (
+                          <Link
+                            to={`/supplier-credits?supplierId=${purchase.supplierId}`}
+                            className="text-[11px] text-brand hover:underline"
+                          >
+                            Dette fournisseur
+                          </Link>
+                        )}
+                      </TableCell>
                       <TableCell>{formatDate(purchase.createdAt)}</TableCell>
                       <TableCell>{purchase.invoiceNumber || '-'}</TableCell>
                       <TableCell className="font-mono text-text-primary text-right">{Number(purchase.totalAmount).toFixed(2)} {currencyLabel}</TableCell>
+                      <TableCell className="text-right text-[12px]">
+                        {purchaseBalanceDue(purchase) > 0 ? (
+                          <span className="text-warning font-medium">
+                            {purchaseBalanceDue(purchase).toFixed(2)} {currencyLabel}
+                          </span>
+                        ) : (
+                          <span className="text-text-muted">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-[12px] text-text-secondary">
+                        {purchase.dueDate ? formatDate(purchase.dueDate) : '—'}
+                      </TableCell>
                       <TableCell>
                         <span
                           className="inline-flex items-center rounded-full font-semibold uppercase tracking-[0.04em]"
@@ -552,6 +623,53 @@ export default function EntriesPage() {
               error={errors.reference?.message}
             />
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                Type de document
+              </label>
+              <select
+                {...register('documentType')}
+                className="w-full px-3 py-2 border rounded-lg bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-brand border-border-default"
+              >
+                <option value={SupplierDocumentType.PURCHASE_ORDER}>Bon de commande (BC)</option>
+                <option value={SupplierDocumentType.DELIVERY_NOTE}>Bon de livraison (BL)</option>
+                <option value={SupplierDocumentType.SUPPLIER_INVOICE}>Facture fournisseur</option>
+              </select>
+            </div>
+            <Input
+              label="Échéance paiement"
+              type="date"
+              {...register('dueDate')}
+              error={errors.dueDate?.message}
+            />
+          </div>
+
+          {documentTypeWatch === SupplierDocumentType.DELIVERY_NOTE && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border border-border-default p-3 bg-elevated/50">
+              <Input
+                label="N° BL fournisseur"
+                {...register('supplierDeliveryNoteNumber')}
+                error={errors.supplierDeliveryNoteNumber?.message}
+              />
+              <Input
+                label="Date BL"
+                type="date"
+                {...register('supplierDeliveryNoteDate')}
+                error={errors.supplierDeliveryNoteDate?.message}
+              />
+              <label className="flex items-center gap-2 md:col-span-2 text-sm text-text-secondary cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoReceiveFull}
+                  onChange={(e) => setAutoReceiveFull(e.target.checked)}
+                  className="rounded border-border-default"
+                />
+                Réception complète immédiate (mise à jour du stock)
+              </label>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input

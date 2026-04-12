@@ -179,6 +179,7 @@ model ProductVariant {
   updatedAt   DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
 
   @@index([productId])
   @@index([sku])
@@ -320,15 +321,27 @@ enum PurchaseStatus {
   RETURNED      // Retourné
 }
 
+/// Type documentaire : BC, BL ou facture fournisseur (même enregistrement Purchase).
+enum SupplierDocumentType {
+  PURCHASE_ORDER   // Bon de commande
+  DELIVERY_NOTE    // Bon de livraison (réception physique)
+  SUPPLIER_INVOICE // Facture fournisseur
+}
+
 model Purchase {
   id              String        @id @default(uuid())
   supplierId      String
-  reference       String        @unique // Référence bon de commande
+  reference       String        @unique // Référence interne
+  documentType    SupplierDocumentType @default(PURCHASE_ORDER)
+  supplierDeliveryNoteNumber String?  // N° BL fournisseur
+  supplierDeliveryNoteDate   DateTime? @db.Date
   invoiceNumber   String?       // N° facture fournisseur
   invoiceDate     DateTime?
   deliveryDate    DateTime?
   status          PurchaseStatus @default(PENDING)
   totalAmount     Decimal       @db.Decimal(10, 2)
+  amountPaid      Decimal       @default(0) @db.Decimal(10, 2) // Crédit fournisseur = totalAmount - amountPaid
+  dueDate         DateTime?     @db.Date // Échéance paiement
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -628,20 +641,23 @@ model Inventory {
 }
 
 model InventoryItem {
-  id              String   @id @default(uuid())
-  inventoryId     String
-  productId       String
-  theoreticalQty  Int      // Quantité théorique
-  countedQty      Int      // Quantité comptée
-  difference      Int      // Écart
-  reason          String?  // Justification écart (perte, vol, casse, erreur)
-  createdAt       DateTime @default(now())
+  id               String   @id @default(uuid())
+  inventoryId      String
+  productId        String
+  productVariantId String? // Si renseigné : comptage au niveau variante (SKU)
+  theoreticalQty   Int // Quantité théorique
+  countedQty       Int // Quantité comptée
+  difference       Int // Écart
+  reason           String? // Justification écart (perte, vol, casse, erreur)
+  createdAt        DateTime @default(now())
 
-  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  product   Product   @relation(fields: [productId], references: [id])
+  inventory      Inventory       @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id])
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
 
   @@index([inventoryId])
   @@index([productId])
+  @@index([productVariantId])
   @@map("inventory_items")
 }
 

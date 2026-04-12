@@ -25,6 +25,11 @@ export class DecimalToNumberInterceptor implements NestInterceptor {
       return obj.toNumber();
     }
 
+    // Ne pas parcourir Date comme un objet générique (sinon JSON corrompu / « Invalid Date » côté client)
+    if (obj instanceof Date) {
+      return obj.toISOString();
+    }
+
     if (Array.isArray(obj)) {
       return obj.map((item) => this.transformDecimals(item));
     }
